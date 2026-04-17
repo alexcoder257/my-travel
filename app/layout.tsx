@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Travel Tracker - Singapore & Malaysia",
-  description: "Track your travel itinerary, expenses, and visited places",
+  title: "Lịch trình - Singapore & Malaysia",
+  description: "Theo dõi lịch trình, chi tiêu và địa điểm đã đến",
 };
 
 export default function RootLayout({
@@ -25,12 +25,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Navbar />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
       </body>
     </html>
   );

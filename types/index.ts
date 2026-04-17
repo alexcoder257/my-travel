@@ -29,23 +29,25 @@ export interface ItineraryItem {
   visited: boolean;
   notes: string;
   order: number;
+  mapUrl?: string;
+  category?: "food" | "place" | "transport" | "other";
 }
 
 export interface VisitedPlace {
   id: string;
   tripId: string;
   itineraryItemId: string;
-  actualPrice: {
+  foodCost: {
+    amount: number;
+    currency: "SGD" | "MYR" | "VND";
+  };
+  transportCost: {
     amount: number;
     currency: "SGD" | "MYR" | "VND";
   };
   imageUrls: string[];
   notes: string;
   visitedAt: Date;
-  location?: {
-    lat: number;
-    lng: number;
-  };
 }
 
 export interface Expense {

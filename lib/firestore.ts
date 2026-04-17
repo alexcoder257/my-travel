@@ -30,7 +30,13 @@ export async function getOrCreateTrip(): Promise<Trip> {
   const tripSnap = await getDoc(tripRef);
 
   if (tripSnap.exists()) {
-    return tripSnap.data() as Trip;
+    const data = tripSnap.data();
+    return {
+      ...(data as Trip),
+      startDate: (data.startDate as Timestamp).toDate(),
+      endDate: (data.endDate as Timestamp).toDate(),
+      createdAt: (data.createdAt as Timestamp).toDate(),
+    };
   }
 
   const newTrip: Trip = {
@@ -63,16 +69,19 @@ export async function getOrCreateTrip(): Promise<Trip> {
 export async function getItinerary(): Promise<ItineraryItem[]> {
   const q = query(
     collection(db, "itinerary"),
-    where("tripId", "==", TRIP_ID),
-    orderBy("day", "asc"),
-    orderBy("order", "asc")
+    where("tripId", "==", TRIP_ID)
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    ...(doc.data() as ItineraryItem),
-    id: doc.id,
-  }));
+  return querySnapshot.docs
+    .map((doc) => ({
+      ...(doc.data() as ItineraryItem),
+      id: doc.id,
+    }))
+    .sort((a, b) => {
+      if (a.day !== b.day) return a.day - b.day;
+      return a.order - b.order;
+    });
 }
 
 export function subscribeToItinerary(
@@ -80,16 +89,19 @@ export function subscribeToItinerary(
 ) {
   const q = query(
     collection(db, "itinerary"),
-    where("tripId", "==", TRIP_ID),
-    orderBy("day", "asc"),
-    orderBy("order", "asc")
+    where("tripId", "==", TRIP_ID)
   );
 
   return onSnapshot(q, (snapshot) => {
-    const items = snapshot.docs.map((doc) => ({
-      ...(doc.data() as ItineraryItem),
-      id: doc.id,
-    }));
+    const items = snapshot.docs
+      .map((doc) => ({
+        ...(doc.data() as ItineraryItem),
+        id: doc.id,
+      }))
+      .sort((a, b) => {
+        if (a.day !== b.day) return a.day - b.day;
+        return a.order - b.order;
+      });
     callback(items);
   });
 }
@@ -111,6 +123,14 @@ export async function addItineraryItems(items: ItineraryItem[]) {
 export async function toggleVisited(itemId: string, visited: boolean) {
   const itemRef = doc(db, "itinerary", itemId);
   await updateDoc(itemRef, { visited });
+}
+
+export async function updateItineraryItem(
+  itemId: string,
+  data: Partial<ItineraryItem>
+) {
+  const itemRef = doc(db, "itinerary", itemId);
+  await updateDoc(itemRef, data);
 }
 
 // Visited places operations
@@ -222,7 +242,41 @@ export async function addExpense(
   return docRef.id;
 }
 
-export async function deleteExpense(expenseId: string) {
-  const docRef = doc(db, "expenses", expenseId);
-  await deleteDoc(docRef);
+export async function getVisitedPlaceByItemId(
+  itineraryItemId: string
+): Promise<VisitedPlace | null> {
+  const q = query(
+    collection(db, "visited_places"),
+    where("itineraryItemId", "==", itineraryItemId)
+  );
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) return null;
+  const doc = querySnapshot.docs[0];
+  return {
+    ...(doc.data() as Omit<VisitedPlace, "id" | "visitedAt">),
+    id: doc.id,
+    visitedAt: (doc.data().visitedAt as Timestamp).toDate(),
+  };
+}
+
+export function subscribeToVisitedPlaceByItemId(
+  itineraryItemId: string,
+  callback: (place: VisitedPlace | null) => void
+) {
+  const q = query(
+    collection(db, "visited_places"),
+    where("itineraryItemId", "==", itineraryItemId)
+  );
+  return onSnapshot(q, (snapshot) => {
+    if (snapshot.empty) {
+      callback(null);
+    } else {
+      const doc = snapshot.docs[0];
+      callback({
+        ...(doc.data() as Omit<VisitedPlace, "id" | "visitedAt">),
+        id: doc.id,
+        visitedAt: (doc.data().visitedAt as Timestamp).toDate(),
+      });
+    }
+  });
 }

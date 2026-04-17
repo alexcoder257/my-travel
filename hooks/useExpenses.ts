@@ -1,78 +1,58 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Expense, Trip } from "@/types/index";
-import { subscribeToExpenses, getItinerary } from "@/lib/firestore";
-import { ItineraryItem } from "@/types/index";
+import { VisitedPlace, Trip, ItineraryItem } from "@/types/index";
+import { subscribeToVisitedPlaces, getItinerary } from "@/lib/firestore";
 
 export function useExpenses(trip: Trip | null) {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [visitedPlaces, setVisitedPlaces] = useState<VisitedPlace[]>([]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = subscribeToExpenses((data) => {
-      setExpenses(data);
+    const unsubscribe = subscribeToVisitedPlaces((data) => {
+      setVisitedPlaces(data);
       setLoading(false);
     });
-
     getItinerary().then(setItinerary);
-
     return () => unsubscribe();
   }, []);
 
   const summary = useMemo(() => {
     if (!trip) return null;
 
-    const estimatedBySGD = itinerary
-      .filter((item) => item.estimatedPrice.currency === "SGD")
-      .reduce((sum, item) => sum + item.estimatedPrice.amount, 0);
+    const estimatedSGD = itinerary
+      .filter((i) => i.estimatedPrice.currency === "SGD")
+      .reduce((s, i) => s + i.estimatedPrice.amount, 0);
+    const estimatedMYR = itinerary
+      .filter((i) => i.estimatedPrice.currency === "MYR")
+      .reduce((s, i) => s + i.estimatedPrice.amount, 0);
 
-    const estimatedByMYR = itinerary
-      .filter((item) => item.estimatedPrice.currency === "MYR")
-      .reduce((sum, item) => sum + item.estimatedPrice.amount, 0);
+    const sum = (places: VisitedPlace[], field: "foodCost" | "transportCost", cur: string) =>
+      places.filter((vp) => vp[field]?.currency === cur).reduce((s, vp) => s + (vp[field]?.amount || 0), 0);
 
-    const estimatedVND =
-      estimatedBySGD * trip.exchangeRates.SGD +
-      estimatedByMYR * trip.exchangeRates.MYR;
+    const foodSGD = sum(visitedPlaces, "foodCost", "SGD");
+    const foodMYR = sum(visitedPlaces, "foodCost", "MYR");
+    const transportSGD = sum(visitedPlaces, "transportCost", "SGD");
+    const transportMYR = sum(visitedPlaces, "transportCost", "MYR");
 
-    const actualBySGD = expenses
-      .filter((exp) => exp.currency === "SGD")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+    const totalSGD = foodSGD + transportSGD;
+    const totalMYR = foodMYR + transportMYR;
 
-    const actualByMYR = expenses
-      .filter((exp) => exp.currency === "MYR")
-      .reduce((sum, exp) => sum + exp.amount, 0);
-
-    const actualVND =
-      actualBySGD * trip.exchangeRates.SGD +
-      actualByMYR * trip.exchangeRates.MYR;
+    const toVND = (sgd: number, myr: number) =>
+      sgd * trip.exchangeRates.SGD + myr * trip.exchangeRates.MYR;
 
     return {
-      estimated: { SGD: estimatedBySGD, MYR: estimatedByMYR, VND: estimatedVND },
-      actual: { SGD: actualBySGD, MYR: actualByMYR, VND: actualVND },
+      estimated: { SGD: estimatedSGD, MYR: estimatedMYR, VND: toVND(estimatedSGD, estimatedMYR) },
+      food: { SGD: foodSGD, MYR: foodMYR, VND: toVND(foodSGD, foodMYR) },
+      transport: { SGD: transportSGD, MYR: transportMYR, VND: toVND(transportSGD, transportMYR) },
+      actual: { SGD: totalSGD, MYR: totalMYR, VND: toVND(totalSGD, totalMYR) },
       remaining: {
-        SGD: trip.budget.SGD - actualBySGD,
-        MYR: trip.budget.MYR - actualByMYR,
+        SGD: trip.budget.SGD - totalSGD,
+        MYR: trip.budget.MYR - totalMYR,
       },
     };
-  }, [expenses, itinerary, trip]);
+  }, [visitedPlaces, itinerary, trip]);
 
-  const categoryBreakdown = useMemo(() => {
-    const breakdown = expenses.reduce(
-      (acc, exp) => {
-        acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-    return breakdown;
-  }, [expenses]);
-
-  return {
-    expenses,
-    loading,
-    summary,
-    categoryBreakdown,
-  };
+  return { loading, summary, visitedPlaces };
 }

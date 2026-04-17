@@ -18,12 +18,14 @@ export function PhotoUpload({
 }: PhotoUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadError(null);
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
@@ -40,8 +42,13 @@ export function PhotoUpload({
       onPhotoUploaded(url);
       setPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed:", error);
+      const msg = error?.code === "storage/unauthorized"
+        ? "Lỗi quyền truy cập Storage. Cần cập nhật Firebase Storage Rules."
+        : `Upload thất bại: ${error?.message || "Lỗi không xác định"}`;
+      setUploadError(msg);
+      setPreview(null);
     } finally {
       setUploading(false);
     }
@@ -61,7 +68,7 @@ export function PhotoUpload({
         <div className="relative">
           <img
             src={preview}
-            alt="Preview"
+            alt="Xem trước"
             className="w-full h-48 object-cover rounded-lg"
           />
           <button
@@ -73,6 +80,10 @@ export function PhotoUpload({
         </div>
       ) : null}
 
+      {uploadError && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">{uploadError}</p>
+      )}
+
       <Button
         onClick={() => fileInputRef.current?.click()}
         disabled={uploading || isLoading}
@@ -80,7 +91,7 @@ export function PhotoUpload({
         className="w-full"
       >
         <Upload className="w-4 h-4 mr-2" />
-        {uploading ? "Uploading..." : "Upload Photo"}
+        {uploading ? "Đang tải lên..." : "Tải ảnh lên"}
       </Button>
     </div>
   );
