@@ -264,7 +264,7 @@ export default function ChecklistPage() {
               return (
                 <div key={item.id} className="border rounded-lg p-4">
                   <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1 pr-3">
+                    <div className="min-w-1 flex-1 pr-3">
                       <h3 className="font-semibold text-gray-900 truncate">
                         {item.activity}
                       </h3>

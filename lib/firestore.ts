@@ -106,15 +106,12 @@ export function subscribeToItinerary(
   });
 }
 
-export async function addItineraryItems(items: ItineraryItem[]) {
+export async function addItineraryItems(items: Omit<ItineraryItem, "id">[]) {
   const batch = writeBatch(db);
 
   items.forEach((item) => {
     const docRef = doc(collection(db, "itinerary"));
-    batch.set(docRef, {
-      ...item,
-      visited: false,
-    });
+    batch.set(docRef, { ...item, visited: false });
   });
 
   await batch.commit();
@@ -190,6 +187,10 @@ export async function updateVisitedPlace(
     updateData.visitedAt = Timestamp.fromDate(data.visitedAt) as any;
   }
   await updateDoc(docRef, updateData);
+}
+
+export async function deleteItineraryItem(itemId: string) {
+  await deleteDoc(doc(db, "itinerary", itemId));
 }
 
 export async function deleteVisitedPlace(placeId: string) {

@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MapPin, CheckSquare, Home, BookImage, Calendar } from "lucide-react";
+import { MapPin, Home, BookImage, Calendar } from "lucide-react";
 
 const navItems = [
   { href: "/", icon: Home, label: "Trang chủ" },
   { href: "/itinerary", icon: Calendar, label: "Lịch trình" },
-  { href: "/checklist", icon: CheckSquare, label: "Danh sách" },
   { href: "/memories", icon: BookImage, label: "Nhật ký" },
 ] as const;
 

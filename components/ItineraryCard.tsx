@@ -12,26 +12,33 @@ import {
   GripVertical,
   ExternalLink,
   NotebookPen,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   addVisitedPlace,
   subscribeToVisitedPlaceByItemId,
   deleteVisitedPlace,
+  deleteItineraryItem,
   updateItineraryItem,
   updateVisitedPlace,
 } from "@/lib/firestore";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ConfirmModal } from "./ConfirmModal";
+import { EditItemModal } from "./EditItemModal";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ItineraryCardProps {
   item: ItineraryItem;
   onToggleVisited: (itemId: string, visited: boolean) => void;
+  onDeleted?: (itemId: string) => void;
 }
 
-export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
+export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCardProps) {
   const {
     attributes,
     listeners,
@@ -48,7 +55,13 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const toast = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteItemModal, setShowDeleteItemModal] = useState(false);
+  const [deletingItem, setDeletingItem] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [visitedPlace, setVisitedPlace] = useState<VisitedPlace | null>(null);
   const [foodAmount, setFoodAmount] = useState("");
   const [transportAmount, setTransportAmount] = useState("");
@@ -79,6 +92,31 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
     });
     return () => unsubscribe();
   }, [item.id]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const handleDeleteItem = async () => {
+    setDeletingItem(true);
+    try {
+      await deleteItineraryItem(item.id);
+      toast.success("Đã xóa hoạt động.");
+      onDeleted?.(item.id);
+    } catch {
+      toast.error("Xóa thất bại, vui lòng thử lại.");
+    } finally {
+      setDeletingItem(false);
+      setShowDeleteItemModal(false);
+    }
+  };
 
   const handleToggleQuick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -130,7 +168,7 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
       setIsExpanded(false);
     } catch (error) {
       console.error("Failed to save visit:", error);
-      alert("Lưu thất bại");
+      toast.error("Lưu thất bại, vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }
@@ -143,7 +181,7 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
       await updateVisitedPlace(visitedPlace.id, { notes: userNote });
     } catch (error) {
       console.error("Failed to update note:", error);
-      alert("Cập nhật ghi chú thất bại");
+      toast.error("Cập nhật ghi chú thất bại.");
     } finally {
       setSubmitting(false);
     }
@@ -155,7 +193,7 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
       await updateItineraryItem(item.id, { mapUrl });
     } catch (error) {
       console.error("Failed to update map URL:", error);
-      alert("Cập nhật thất bại");
+      toast.error("Cập nhật link bản đồ thất bại.");
     } finally {
       setSubmitting(false);
     }
@@ -230,17 +268,47 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
                   </a>
                 )}
               </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-sm font-medium text-gray-700">
-                  ~{item.estimatedPrice.amount}
-                  <span className="text-xs ml-1">{item.estimatedPrice.currency}</span>
-                </p>
-                <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="text-gray-400 hover:text-gray-600 mt-1"
-                >
-                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
+              <div className="flex items-start gap-1 flex-shrink-0">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-700">
+                    ~{item.estimatedPrice.amount}
+                    <span className="text-xs ml-1">{item.estimatedPrice.currency}</span>
+                  </p>
+                  <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="text-gray-400 hover:text-gray-600 mt-1"
+                  >
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Kebab menu */}
+                <div ref={menuRef} className="relative">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
+                    className="p-1 rounded text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-7 z-50 w-36 bg-white border border-gray-200 rounded-lg shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowEditModal(true); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-blue-500" />
+                        Sửa
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowDeleteItemModal(true); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Xóa
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -254,7 +322,7 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   onBlur={handleTimeBlur}
-                  className="w-12 border-none bg-transparent focus:ring-0 p-0 text-xs font-medium text-blue-600"
+                  className="w-16 border-none bg-transparent focus:ring-0 p-0 text-xs font-medium text-blue-600"
                 />
               </div>
             </div>
@@ -329,7 +397,7 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">🍜 Ăn uống & tham quan</label>
+                      <label className="text-xs text-gray-500 mb-1 block">🍜 Ăn uống</label>
                       <div className="relative">
                         <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                         <input
@@ -344,7 +412,7 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">🚗 Đi lại (Grab/MRT)</label>
+                      <label className="text-xs text-gray-500 mb-1 block">🚗 Di chuyển</label>
                       <div className="relative">
                         <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                         <input
@@ -418,6 +486,20 @@ export function ItineraryCard({ item, onToggleVisited }: ItineraryCardProps) {
         variant="destructive"
         confirmText="Xóa bản ghi"
       />
+
+      <ConfirmModal
+        isOpen={showDeleteItemModal}
+        title="Xóa hoạt động"
+        message={`Bạn có chắc muốn xóa "${item.activity}" khỏi lịch trình? Hành động này không thể hoàn tác.`}
+        onConfirm={handleDeleteItem}
+        onCancel={() => setShowDeleteItemModal(false)}
+        variant="destructive"
+        confirmText={deletingItem ? "Đang xóa..." : "Xóa hoạt động"}
+      />
+
+      {showEditModal && (
+        <EditItemModal item={item} onClose={() => setShowEditModal(false)} />
+      )}
     </>
   );
 }
