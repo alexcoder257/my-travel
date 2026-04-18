@@ -73,7 +73,7 @@ export function EditItemModal({ item, onClose }: Props) {
     }
     setSaving(true);
     try {
-      await updateItineraryItem(item.id, {
+      const updateData: any = {
         activity: form.activity.trim(),
         location: form.location.trim(),
         date: form.date.trim(),
@@ -83,12 +83,17 @@ export function EditItemModal({ item, onClose }: Props) {
           currency: form.currency as ItineraryItem["estimatedPrice"]["currency"],
         },
         category: form.category as ItineraryItem["category"],
-        mapUrl: form.mapUrl.trim() || undefined,
         notes: form.notes.trim(),
-      });
+      };
+      if (form.mapUrl.trim()) {
+        updateData.mapUrl = form.mapUrl.trim();
+      }
+      console.log("[DEBUG] updateItineraryItem:", item.id, updateData);
+      await updateItineraryItem(item.id, updateData);
       toast.success("Đã cập nhật hoạt động.");
       onClose();
-    } catch {
+    } catch (err) {
+      console.error("[ERROR] updateItineraryItem:", err);
       toast.error("Lưu thất bại, vui lòng thử lại.");
     } finally {
       setSaving(false);
