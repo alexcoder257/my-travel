@@ -9,8 +9,6 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  GripVertical,
-  ExternalLink,
   NotebookPen,
   MoreVertical,
   Pencil,
@@ -34,9 +32,11 @@ interface ItineraryCardProps {
   item: ItineraryItem;
   onToggleVisited: (itemId: string, visited: boolean) => void;
   onDeleted?: (itemId: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
-export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCardProps) {
+export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMoveDown }: ItineraryCardProps) {
 
 
   const toast = useToast();
@@ -54,8 +54,9 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
   );
   const [userNote, setUserNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [mapUrl, setMapUrl] = useState(item.mapUrl || "");
-  const [time, setTime] = useState(item.time);
+  // Removed unused setMapUrl, setTime
+  const [mapUrl] = useState(item.mapUrl || "");
+  const [time] = useState(item.time);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
@@ -76,6 +77,24 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
     });
     return () => unsubscribe();
   }, [item.id]);
+  useEffect(() => {
+    const unsubscribe = subscribeToVisitedPlaceByItemId(item.id, (place) => {
+      setVisitedPlace(place);
+      if (place) {
+        setFoodAmount(place.foodCost?.amount?.toString() || "");
+        setTransportAmount(place.transportCost?.amount?.toString() || "");
+        setPriceCurrency(
+          place.foodCost?.currency || place.transportCost?.currency || item.estimatedPrice.currency || "SGD"
+        );
+        setUserNote(place.notes || "");
+      } else {
+        setFoodAmount("");
+        setTransportAmount("");
+        setUserNote("");
+      }
+    });
+    return () => unsubscribe();
+  }, [item.id, item.estimatedPrice.currency]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -125,15 +144,7 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
     }
   };
 
-  const handleTimeBlur = async () => {
-    if (time !== item.time) {
-      try {
-        await updateItineraryItem(item.id, { time });
-      } catch (error) {
-        console.error("Failed to update time:", error);
-      }
-    }
-  };
+  // Removed unused handleTimeBlur
 
   const handleSaveVisit = async () => {
     try {
@@ -171,17 +182,7 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
     }
   };
 
-  const handleUpdateMapUrl = async () => {
-    try {
-      setSubmitting(true);
-      await updateItineraryItem(item.id, { mapUrl });
-    } catch (error) {
-      console.error("Failed to update map URL:", error);
-      toast.error("Cập nhật link bản đồ thất bại.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Removed unused handleUpdateMapUrl
 
   const confirmDeleteVisit = async () => {
     try {
@@ -206,7 +207,28 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
         }`}
       >
 
-        <div className="flex gap-0.5 md:gap-2">
+        <div className="flex gap-0.5 md:gap-2 items-center">
+          {/* Up/Down controls */}
+          <div className="flex flex-col mr-1">
+            <button
+              className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30"
+              onClick={onMoveUp}
+              disabled={!onMoveUp}
+              title="Di chuyển lên"
+              type="button"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <button
+              className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30"
+              onClick={onMoveDown}
+              disabled={!onMoveDown}
+              title="Di chuyển xuống"
+              type="button"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
 
 
           {/* Check button — visually compact, touch area preserved */}

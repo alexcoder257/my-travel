@@ -6,8 +6,9 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { Loader, FileUp, Search, X } from "lucide-react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { updateItineraryItem } from "@lib/firestore";
+import { updateItineraryItem } from "@/lib/firestore";
 import { ItineraryItem } from "@/types/index";
+import { CreateItemModal } from "@/components/CreateItemModal";
 
 type CategoryFilter = "all" | "food" | "place" | "transport" | "other";
 type StatusFilter = "all" | "visited" | "unvisited";
@@ -39,6 +40,8 @@ export default function ItineraryPage() {
 
   const [foldedDays, setFoldedDays] = useState<Record<string, boolean>>({});
   const [showImport, setShowImport] = useState(false);
+  // Track which day group is opening the create modal
+  const [createModal, setCreateModal] = useState<null | { day: number; date: string; order: number }>(null);
 
   useEffect(() => { setItems(initialItems); }, [initialItems]);
 
@@ -192,10 +195,10 @@ export default function ItineraryPage() {
 
         {/* Row: Days (horizontal scroll) */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-          <span className="text-xs text-gray-400 font-medium flex-shrink-0">Ngày</span>
+          <span className="text-xs text-gray-400 font-medium shrink-0">Ngày</span>
           <button
             onClick={() => setDay("all")}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               day === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
@@ -205,7 +208,7 @@ export default function ItineraryPage() {
             <button
               key={d}
               onClick={() => setDay(d)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 day === d ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
@@ -295,16 +298,58 @@ export default function ItineraryPage() {
 
                 {!isFolded && (
                   <div className="space-y-3 px-2 md:px-0">
-                    {dayItems.map((item) => (
-                      <div key={item.id} ref={(el) => { cardRefs.current[item.id] = el; }} id={`itinerary-${item.id}`}>
-                        <ItineraryCard item={item} onToggleVisited={toggleVisited} />
-                      </div>
-                    ))}
+                    {dayItems.map((item, idx) => {
+                      // Move handler: after swap, reindex all orders for the day
+                      const reindexOrders = async (items: typeof dayItems) => {
+                        await Promise.all(
+                          items.map((it, i) => updateItineraryItem(it.id, { order: i }))
+                        );
+                      };
+                      const handleMoveUp = idx > 0 ? async () => {
+                        // Swap in array
+                        const newItems = [...dayItems];
+                        [newItems[idx - 1], newItems[idx]] = [newItems[idx], newItems[idx - 1]];
+                        await reindexOrders(newItems);
+                      } : undefined;
+                      const handleMoveDown = idx < dayItems.length - 1 ? async () => {
+                        const newItems = [...dayItems];
+                        [newItems[idx], newItems[idx + 1]] = [newItems[idx + 1], newItems[idx]];
+                        await reindexOrders(newItems);
+                      } : undefined;
+                      return (
+                        <div key={item.id} ref={(el) => { cardRefs.current[item.id] = el; }} id={`itinerary-${item.id}`}>
+                          <ItineraryCard
+                            item={item}
+                            onToggleVisited={toggleVisited}
+                            onMoveUp={handleMoveUp}
+                            onMoveDown={handleMoveDown}
+                          />
+                        </div>
+                      );
+                    })}
+                    {/* Add Activity Button */}
+                    <div className="pt-2 flex justify-center">
+                      <button
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow transition-colors"
+                        onClick={() => setCreateModal({ day: Number(d), date: firstItem.date, order: dayItems.length })}
+                      >
+                        + Thêm hoạt động
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             );
           })}
+            {/* Create Item Modal */}
+            {createModal && (
+              <CreateItemModal
+                day={createModal.day}
+                date={createModal.date}
+                order={createModal.order}
+                onClose={() => setCreateModal(null)}
+              />
+            )}
       </div>
     </div>
   );

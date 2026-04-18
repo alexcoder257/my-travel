@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { ItineraryItem } from "@/types/index";
-import { updateItineraryItem } from "@/lib/firestore";
+import { addItineraryItems } from "@/lib/firestore";
 import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
 interface Props {
-  item: ItineraryItem;
+  day: number;
+  order: number;
+  date: string;
   onClose: () => void;
 }
 
@@ -21,7 +23,6 @@ const CATEGORIES = [
 
 const CURRENCIES = ["SGD", "MYR", "VND", "USD", "EUR", "THB", "JPY"];
 
-// Shared input class — text-base (16px) ensures no iOS zoom
 const inputCls =
   "w-full px-3 py-3 text-base border border-gray-200 rounded-xl bg-white " +
   "focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent " +
@@ -29,32 +30,20 @@ const inputCls =
 
 const labelCls = "block text-sm font-medium text-gray-600 mb-1.5";
 
-export function EditItemModal({ item, onClose }: Props) {
+export function CreateItemModal({ day, order, date, onClose }: Props) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
-
-  // Parse time to start/end if possible
-  let startTimeInit = "";
-  let endTimeInit = "";
-  if (item.time && item.time.includes("–")) {
-    [startTimeInit, endTimeInit] = item.time.split("–");
-    startTimeInit = startTimeInit.trim();
-    endTimeInit = endTimeInit.trim();
-  } else if (item.time) {
-    startTimeInit = item.time;
-    endTimeInit = "";
-  }
   const [form, setForm] = useState({
-    activity: item.activity,
-    location: item.location,
-    date: item.date,
-    startTime: startTimeInit,
-    endTime: endTimeInit,
-    amount: String(item.estimatedPrice.amount),
-    currency: item.estimatedPrice.currency,
-    category: item.category ?? "other",
-    mapUrl: item.mapUrl ?? "",
-    notes: item.notes ?? "",
+    activity: "",
+    location: "",
+    date: date,
+    startTime: "",
+    endTime: "",
+    amount: "",
+    currency: "SGD",
+    category: "other",
+    mapUrl: "",
+    notes: "",
   });
 
   const set =
@@ -73,43 +62,40 @@ export function EditItemModal({ item, onClose }: Props) {
     }
     setSaving(true);
     try {
-      const updateData: any = {
-        activity: form.activity.trim(),
-        location: form.location.trim(),
+      const newItem: Omit<ItineraryItem, "id"> = {
+        tripId: "sg-my-2026", // TODO: dynamic tripId if needed
+        day,
         date: form.date.trim(),
         time: `${form.startTime.trim()}–${form.endTime.trim()}`,
+        location: form.location.trim(),
+        activity: form.activity.trim(),
         estimatedPrice: {
           amount: parseFloat(form.amount) || 0,
           currency: form.currency as ItineraryItem["estimatedPrice"]["currency"],
         },
-        category: form.category as ItineraryItem["category"],
+        visited: false,
         notes: form.notes.trim(),
+        order,
+        mapUrl: form.mapUrl.trim() || undefined,
+        category: form.category as ItineraryItem["category"],
       };
-      if (form.mapUrl.trim()) {
-        updateData.mapUrl = form.mapUrl.trim();
-      }
-      console.log("[DEBUG] updateItineraryItem:", item.id, updateData);
-      await updateItineraryItem(item.id, updateData);
-      toast.success("Đã cập nhật hoạt động.");
+      await addItineraryItems([newItem]);
+      toast.success("Đã thêm hoạt động mới.");
       onClose();
     } catch (err) {
-      console.error("[ERROR] updateItineraryItem:", err);
-      toast.error("Lưu thất bại, vui lòng thử lại.");
+      console.error("[ERROR] addItineraryItems:", err);
+      toast.error("Tạo mới thất bại, vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Sheet on mobile (slides from bottom), centered modal on sm+ */}
+    <div className="fixed inset-0 z-100 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[92dvh] animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
-
-        {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
-          {/* Drag handle (mobile only) */}
           <div className="absolute left-1/2 -translate-x-1/2 top-2.5 w-10 h-1 bg-gray-200 rounded-full sm:hidden" />
-          <h2 className="text-lg font-bold text-gray-900">Sửa hoạt động</h2>
+          <h2 className="text-lg font-bold text-gray-900">Thêm hoạt động</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
@@ -117,11 +103,7 @@ export function EditItemModal({ item, onClose }: Props) {
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Scrollable form body */}
         <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5">
-
-          {/* Activity */}
           <div>
             <label className={labelCls}>Hoạt động <span className="text-red-400">*</span></label>
             <input
@@ -133,8 +115,6 @@ export function EditItemModal({ item, onClose }: Props) {
               autoComplete="off"
             />
           </div>
-
-          {/* Location */}
           <div>
             <label className={labelCls}>Địa điểm <span className="text-red-400">*</span></label>
             <input
@@ -146,12 +126,7 @@ export function EditItemModal({ item, onClose }: Props) {
               autoComplete="off"
             />
           </div>
-
-          {/* (Đã loại bỏ block cũ Date + Time 2 cols, chỉ giữ block 3 cols mới) */}
-
-
-          {/* Price + Currency + Category (3 cols) */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Chi phí dự toán</label>
               <input
@@ -173,17 +148,7 @@ export function EditItemModal({ item, onClose }: Props) {
                 ))}
               </select>
             </div>
-            <div>
-              <label className={labelCls}>Loại hoạt động</label>
-              <select value={form.category} onChange={set("category")} className={inputCls}>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>{cat.label}</option>
-                ))}
-              </select>
-            </div>
           </div>
-
-          {/* Date + Time (range) */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={labelCls}>Ngày</label>
@@ -216,8 +181,6 @@ export function EditItemModal({ item, onClose }: Props) {
               />
             </div>
           </div>
-
-          {/* Link Google Maps */}
           <div>
             <label className={labelCls}>Link Google Maps</label>
             <input
@@ -230,8 +193,6 @@ export function EditItemModal({ item, onClose }: Props) {
               autoComplete="off"
             />
           </div>
-
-          {/* Notes */}
           <div>
             <label className={labelCls}>Ghi chú / Hướng dẫn</label>
             <textarea
@@ -243,14 +204,12 @@ export function EditItemModal({ item, onClose }: Props) {
             />
           </div>
         </div>
-
-        {/* Footer */}
         <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
           <Button variant="outline" onClick={onClose} disabled={saving} className="flex-1 h-12 text-base">
             Hủy
           </Button>
           <Button onClick={handleSave} disabled={saving} className="flex-1 h-12 text-base">
-            {saving ? "Đang lưu..." : "Lưu thay đổi"}
+            {saving ? "Đang lưu..." : "Tạo mới"}
           </Button>
         </div>
       </div>
