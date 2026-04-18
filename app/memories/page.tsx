@@ -27,7 +27,12 @@ export default function MemoriesPage() {
   const visitedWithDetails = useMemo(() => {
     return visitedPlaces
       .map((vp) => ({ vp, item: itineraryMap[vp.itineraryItemId] }))
-      .filter(({ item }) => !!item);
+      .filter(({ item }) => !!item)
+      .sort((a, b) => {
+        // Sort theo ngày tăng dần, nếu cùng ngày thì theo order
+        if (a.item.day !== b.item.day) return a.item.day - b.item.day;
+        return (a.item.order ?? 0) - (b.item.order ?? 0);
+      });
   }, [visitedPlaces, itineraryMap]);
 
   const filtered = useMemo(() => {

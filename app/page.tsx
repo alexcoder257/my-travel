@@ -1,6 +1,9 @@
 "use client";
 
 import { useTrip } from "@/hooks/useTrip";
+import { useState } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useItinerary } from "@/hooks/useItinerary";
 import { useExpenses } from "@/hooks/useExpenses";
 import Link from "next/link";
@@ -8,6 +11,29 @@ import { Loader } from "lucide-react";
 
 export default function Dashboard() {
   const { trip, loading: tripLoading } = useTrip();
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(trip?.name || "");
+  const [startDate, setStartDate] = useState(trip?.startDate ? trip.startDate.toISOString().slice(0,10) : "");
+  const [endDate, setEndDate] = useState(trip?.endDate ? trip.endDate.toISOString().slice(0,10) : "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!trip) return;
+    setSaving(true);
+    try {
+      const tripRef = doc(db, "trips", trip.id);
+      await updateDoc(tripRef, {
+        name: title,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+      });
+      setEditing(false);
+      // Auto reload page to get latest info
+      window.location.reload();
+    } finally {
+      setSaving(false);
+    }
+  };
   const { items: itinerary, loading: itineraryLoading } = useItinerary();
   const { summary } = useExpenses(trip);
 
@@ -25,41 +51,106 @@ export default function Dashboard() {
     );
   }
 
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-      {/* Next Activity at top */}
+      {/* Title/Header at top */}
+      <div className="mb-6">
+        {editing ? (
+          <div className="space-y-2">
+            <input
+              className="text-3xl md:text-5xl font-extrabold text-gray-900 w-full border-b border-gray-300 focus:border-blue-500 outline-none bg-transparent"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              disabled={saving}
+            />
+            <div className="flex gap-2 items-center mt-1">
+              <input
+                type="date"
+                className="border rounded px-2 py-1"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                disabled={saving}
+              />
+              <span>-</span>
+              <input
+                type="date"
+                className="border rounded px-2 py-1"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                disabled={saving}
+              />
+              <button
+                className="ml-2 px-3 py-1 rounded bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
+                onClick={handleSave}
+                disabled={saving}
+              >Lưu</button>
+              <button
+                className="ml-1 px-3 py-1 rounded bg-gray-200 text-gray-700 font-medium hover:bg-gray-300"
+                onClick={() => setEditing(false)}
+                disabled={saving}
+              >Huỷ</button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative flex flex-col md:flex-row md:items-end gap-2">
+            <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 pr-10">
+              {trip.name}
+            </h1>
+            {/* Small red edit icon at top-right of title */}
+            <button
+              className="absolute top-2 right-2 md:top-3 md:right-3 rounded-full hover:bg-blue-50 focus:outline-none"
+              title="Sửa thông tin chuyến đi"
+              onClick={() => {
+                setTitle(trip.name);
+                setStartDate(trip.startDate.toISOString().slice(0,10));
+                setEndDate(trip.endDate.toISOString().slice(0,10));
+                setEditing(true);
+              }}
+            >
+              {/* Blue pencil icon, same as itinerary edit */}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline align-middle">
+                <path d="M12 20h9" />
+                <path d="M16.7 4.3a2.4 2.4 0 1 1 3.4 3.4L7.5 20.3l-4.2.5.5-4.2Z" />
+              </svg>
+            </button>
+            <p className="text-gray-600 mt-2 md:ml-4 text-base md:text-lg">
+              {trip.startDate.toLocaleDateString("vi-VN")} - {trip.endDate.toLocaleDateString("vi-VN")}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Next Activity card below title */}
       {nextActivity && (
         <button
-          className="w-full text-left bg-blue-50 p-4 md:p-6 rounded-lg border border-blue-200 hover:bg-blue-100 transition mb-6 focus:outline-none"
+          className="w-full text-left bg-blue-50 p-4 md:p-6 rounded-xl border border-blue-200 hover:bg-blue-100 transition mb-8 flex items-center justify-between gap-4 shadow-sm focus:outline-none"
           onClick={() => {
             window.location.href = `/itinerary?scrollTo=${nextActivity.id}`;
           }}
         >
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Hoạt động tiếp theo
-          </h3>
-          <p className="text-gray-700 font-medium">{nextActivity.activity}</p>
-          <p className="text-gray-600 text-sm mt-1">{nextActivity.location}</p>
-          <p className="text-gray-600 text-sm">
-            {nextActivity.date} lúc {nextActivity.time}
-          </p>
+          <div>
+            <h3 className="text-lg font-semibold text-blue-900 mb-1 flex items-center gap-2">
+              Hoạt động tiếp theo
+            </h3>
+            <p className="text-gray-800 font-medium text-base">{nextActivity.activity}</p>
+            <p className="text-gray-600 text-sm mt-1">{nextActivity.location}</p>
+            <p className="text-gray-600 text-sm">
+              {nextActivity.date} lúc {nextActivity.time}
+            </p>
+          </div>
+          <span className="text-blue-500 flex-shrink-0">
+            {/* Arrow icon (right) */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </span>
         </button>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-4xl font-bold text-gray-900">
-          {trip.name}
-        </h1>
-        <p className="text-gray-600 mt-2">
-          {trip.startDate.toLocaleDateString("vi-VN")} -{" "}
-          {trip.endDate.toLocaleDateString("vi-VN")}
-        </p>
-      </div>
-
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Progress */}
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+        {/* Progress only */}
         <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
           <h3 className="text-sm font-medium text-gray-600 mb-2">Tiến độ</h3>
           <div className="flex items-end gap-4">
@@ -78,56 +169,6 @@ export default function Dashboard() {
               </div>
               <p className="text-xs text-gray-600 mt-1">{progress.toFixed(0)}%</p>
             </div>
-          </div>
-        </div>
-
-        {/* Budget SGD */}
-        <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">
-            Ngân sách Singapore
-          </h3>
-          <p className="text-2xl md:text-3xl font-bold text-gray-900">
-            {summary.actual.SGD.toFixed(0)}
-            <span className="text-lg text-gray-600 ml-1">SGD</span>
-          </p>
-          <p className="text-sm text-gray-600 mt-1">
-            Dự toán: {trip.budget.SGD} SGD
-          </p>
-          <div className="mt-2 text-sm">
-            {summary.remaining.SGD >= 0 ? (
-              <p className="text-green-600">
-                {summary.remaining.SGD.toFixed(0)} SGD còn lại
-              </p>
-            ) : (
-              <p className="text-red-600">
-                Vượt {Math.abs(summary.remaining.SGD).toFixed(0)} SGD
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Budget MYR */}
-        <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">
-            Ngân sách Malaysia
-          </h3>
-          <p className="text-2xl md:text-3xl font-bold text-gray-900">
-            {summary.actual.MYR.toFixed(0)}
-            <span className="text-lg text-gray-600 ml-1">MYR</span>
-          </p>
-          <p className="text-sm text-gray-600 mt-1">
-            Dự toán: {trip.budget.MYR} MYR
-          </p>
-          <div className="mt-2 text-sm">
-            {summary.remaining.MYR >= 0 ? (
-              <p className="text-green-600">
-                {summary.remaining.MYR.toFixed(0)} MYR còn lại
-              </p>
-            ) : (
-              <p className="text-red-600">
-                Vượt {Math.abs(summary.remaining.MYR).toFixed(0)} MYR
-              </p>
-            )}
           </div>
         </div>
       </div>
@@ -203,26 +244,7 @@ export default function Dashboard() {
 
       {/* ...removed old Next Activity block... */}
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link
-          href="/itinerary"
-          className="bg-white p-6 rounded-lg border border-gray-200 hover:border-blue-400 transition text-center"
-        >
-          <h3 className="text-lg font-semibold text-gray-900">Lịch trình</h3>
-          <p className="text-sm text-gray-600 mt-1">Xem lịch trình hàng ngày</p>
-        </Link>
 
-        <Link
-          href="/checklist"
-          className="bg-white p-6 rounded-lg border border-gray-200 hover:border-blue-400 transition text-center"
-        >
-          <h3 className="text-lg font-semibold text-gray-900">Danh sách</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Theo dõi địa điểm đã đến ({visitedCount} đã xong)
-          </p>
-        </Link>
-      </div>
     </div>
   );
 }

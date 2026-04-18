@@ -6,22 +6,7 @@ import { ImportDialog } from "@/components/ImportDialog";
 import { Loader, FileUp, Search, X } from "lucide-react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { updateItineraryItem } from "@/lib/firestore";
+import { updateItineraryItem } from "@lib/firestore";
 import { ItineraryItem } from "@/types/index";
 
 type CategoryFilter = "all" | "food" | "place" | "transport" | "other";
@@ -83,32 +68,7 @@ export default function ItineraryPage() {
     [items]
   );
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
 
-  const handleDragEnd = async (event: DragEndEvent, d: number) => {
-    if (isFiltering) return;
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const dayItems = items.filter((item) => item.day === d);
-    const oldIndex = dayItems.findIndex((item) => item.id === active.id);
-    const newIndex = dayItems.findIndex((item) => item.id === over.id);
-    const reordered = arrayMove(dayItems, oldIndex, newIndex);
-
-    setItems(
-      items.map((item) =>
-        item.day !== d ? item : { ...item, order: reordered.findIndex((r) => r.id === item.id) }
-      )
-    );
-    try {
-      await Promise.all(reordered.map((item, i) => updateItineraryItem(item.id, { order: i })));
-    } catch (e) {
-      console.error("Failed to update order:", e);
-    }
-  };
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -334,21 +294,13 @@ export default function ItineraryPage() {
                 </div>
 
                 {!isFolded && (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event) => handleDragEnd(event, Number(d))}
-                  >
-                    <SortableContext items={dayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                      <div className="space-y-3 px-2 md:px-0">
-                        {dayItems.map((item) => (
-                          <div key={item.id} ref={(el) => { cardRefs.current[item.id] = el; }} id={`itinerary-${item.id}`}>
-                            <ItineraryCard item={item} onToggleVisited={toggleVisited} />
-                          </div>
-                        ))}
+                  <div className="space-y-3 px-2 md:px-0">
+                    {dayItems.map((item) => (
+                      <div key={item.id} ref={(el) => { cardRefs.current[item.id] = el; }} id={`itinerary-${item.id}`}>
+                        <ItineraryCard item={item} onToggleVisited={toggleVisited} />
                       </div>
-                    </SortableContext>
-                  </DndContext>
+                    ))}
+                  </div>
                 )}
               </div>
             );

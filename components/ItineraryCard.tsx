@@ -26,8 +26,6 @@ import {
   updateItineraryItem,
   updateVisitedPlace,
 } from "@/lib/firestore";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { ConfirmModal } from "./ConfirmModal";
 import { EditItemModal } from "./EditItemModal";
 import { useToast } from "@/contexts/ToastContext";
@@ -39,21 +37,7 @@ interface ItineraryCardProps {
 }
 
 export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : "auto",
-    opacity: isDragging ? 0.5 : 1,
-  };
 
   const toast = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -217,23 +201,13 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
   return (
     <>
       <div
-        ref={setNodeRef}
-        style={style}
         className={`p-4 border rounded-lg transition ${
           item.visited ? "bg-green-50 border-green-200" : "bg-white border-gray-200"
-        } ${isDragging ? "shadow-lg ring-2 ring-blue-500 z-50" : ""}`}
+        }`}
       >
 
         <div className="flex gap-0.5 md:gap-2">
-          {/* Drag handle — compact on mobile */}
-          <div
-            {...attributes}
-            {...listeners}
-            className="flex-shrink-0 flex items-center pt-1 md:pt-2.5 cursor-grab active:cursor-grabbing touch-none text-gray-300 hover:text-gray-500"
-            style={{ minWidth: 32, minHeight: 32 }}
-          >
-            <GripVertical className="w-3 h-3 md:w-4 md:h-4" />
-          </div>
+
 
           {/* Check button — visually compact, touch area preserved */}
           <button
@@ -317,13 +291,7 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
               <span>{item.date}</span>
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                <input
-                  type="text"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  onBlur={handleTimeBlur}
-                  className="w-16 border-none bg-transparent focus:ring-0 p-0 text-xs font-medium text-blue-600"
-                />
+                <span className="text-xs font-medium text-blue-600">{item.time}</span>
               </div>
             </div>
 
@@ -340,6 +308,7 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
               </div>
             )}
 
+
             {/* Expanded panel */}
             {isExpanded && (
               <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
@@ -347,38 +316,6 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted }: ItineraryCar
                 {item.notes && (
                   <p className="text-xs text-gray-500 bg-gray-50 rounded p-2 leading-relaxed">{item.notes}</p>
                 )}
-
-                {/* Google Maps link */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Link Google Maps</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={mapUrl}
-                        onChange={(e) => setMapUrl(e.target.value)}
-                        placeholder="https://maps.google.com/..."
-                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      />
-                    </div>
-                    {item.mapUrl && (
-                      <a
-                        href={item.mapUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 border border-gray-300 rounded-lg text-blue-600 hover:bg-blue-50"
-                      >
-                        <ExternalLink className="w-5 h-5" />
-                      </a>
-                    )}
-                    {mapUrl !== item.mapUrl && (
-                      <Button onClick={handleUpdateMapUrl} size="sm" variant="outline">
-                        Lưu link
-                      </Button>
-                    )}
-                  </div>
-                </div>
 
                 {/* Actual spend */}
                 <div>

@@ -33,11 +33,23 @@ export function EditItemModal({ item, onClose }: Props) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
 
+  // Parse time to start/end if possible
+  let startTimeInit = "";
+  let endTimeInit = "";
+  if (item.time && item.time.includes("–")) {
+    [startTimeInit, endTimeInit] = item.time.split("–");
+    startTimeInit = startTimeInit.trim();
+    endTimeInit = endTimeInit.trim();
+  } else if (item.time) {
+    startTimeInit = item.time;
+    endTimeInit = "";
+  }
   const [form, setForm] = useState({
     activity: item.activity,
     location: item.location,
     date: item.date,
-    time: item.time,
+    startTime: startTimeInit,
+    endTime: endTimeInit,
     amount: String(item.estimatedPrice.amount),
     currency: item.estimatedPrice.currency,
     category: item.category ?? "other",
@@ -55,13 +67,17 @@ export function EditItemModal({ item, onClose }: Props) {
       toast.error("Hoạt động và địa điểm không được để trống.");
       return;
     }
+    if (!form.startTime.trim() || !form.endTime.trim()) {
+      toast.error("Vui lòng nhập đủ giờ bắt đầu và kết thúc.");
+      return;
+    }
     setSaving(true);
     try {
       await updateItineraryItem(item.id, {
         activity: form.activity.trim(),
         location: form.location.trim(),
         date: form.date.trim(),
-        time: form.time.trim(),
+        time: `${form.startTime.trim()}–${form.endTime.trim()}`,
         estimatedPrice: {
           amount: parseFloat(form.amount) || 0,
           currency: form.currency as ItineraryItem["estimatedPrice"]["currency"],
@@ -126,29 +142,7 @@ export function EditItemModal({ item, onClose }: Props) {
             />
           </div>
 
-          {/* Date + Time (2 cols) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Ngày</label>
-              <input
-                type="text"
-                value={form.date}
-                onChange={set("date")}
-                className={inputCls}
-                placeholder="2026-04-29"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Giờ</label>
-              <input
-                type="text"
-                value={form.time}
-                onChange={set("time")}
-                className={inputCls}
-                placeholder="08:00"
-              />
-            </div>
-          </div>
+          {/* (Đã loại bỏ block cũ Date + Time 2 cols, chỉ giữ block 3 cols mới) */}
 
           {/* Price + Currency (2 cols) */}
           <div className="grid grid-cols-2 gap-3">
@@ -175,28 +169,41 @@ export function EditItemModal({ item, onClose }: Props) {
             </div>
           </div>
 
-          {/* Category */}
-          <div>
-            <label className={labelCls}>Loại</label>
-            <div className="flex gap-2 flex-wrap">
-              {CATEGORIES.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setForm((p) => ({ ...p, category: value }))}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    form.category === value
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+          {/* Date + Time (range) */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelCls}>Ngày</label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={set("date")}
+                className={inputCls}
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Giờ bắt đầu</label>
+              <input
+                type="time"
+                value={form.startTime}
+                onChange={set("startTime")}
+                className={inputCls}
+                autoComplete="off"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Giờ kết thúc</label>
+              <input
+                type="time"
+                value={form.endTime}
+                onChange={set("endTime")}
+                className={inputCls}
+                autoComplete="off"
+              />
             </div>
           </div>
 
-          {/* Map URL */}
+          {/* Link Google Maps */}
           <div>
             <label className={labelCls}>Link Google Maps</label>
             <input
