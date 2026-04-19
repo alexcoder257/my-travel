@@ -98,7 +98,7 @@ export default function HomePage() {
             className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(180deg, rgba(12,23,12,0.15) 0%, rgba(12,23,12,0.05) 40%, rgba(250,248,242,0.15) 70%, var(--surface-body) 100%)",
+                "linear-gradient(180deg, rgba(12,23,12,0.2) 0%, rgba(12,23,12,0.1) 35%, rgba(12,23,12,0.55) 65%, rgba(12,23,12,0.75) 85%, var(--surface-body) 100%)",
             }}
           />
         </motion.div>
@@ -110,7 +110,7 @@ export default function HomePage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="absolute top-[max(env(safe-area-inset-top),16px)] left-0 right-0 px-5 flex items-center justify-between"
         >
-          <span className="glass-panel inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide"
+          <span className="glass-panel inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[13px] font-semibold tracking-wide"
             style={{ color: "var(--nature-900)" }}>
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent-berry)" }} />
             TRIP · LIVE
@@ -131,27 +131,28 @@ export default function HomePage() {
           transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 0.68, 0, 1] }}
           className="absolute left-0 right-0 bottom-[112px] px-5 text-white"
         >
-          <p className="text-[13px] uppercase tracking-[0.16em] opacity-90 flex items-center gap-1.5">
+          <p className="text-[15px] uppercase tracking-[0.16em] opacity-90 flex items-center gap-1.5 font-medium"
+            style={{ textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}>
             🇸🇬 · 🇲🇾 <span className="ml-1">South-East Asia</span>
           </p>
-          <h1 className="mt-2 text-[44px] leading-[1.02] font-extrabold tracking-tight"
-            style={{ fontFamily: "var(--font-heading, inherit)" }}>
+          <h1 className="mt-2 text-[42px] leading-[1.02] font-extrabold tracking-tight"
+            style={{ fontFamily: "var(--font-heading, inherit)", textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}>
             {trip.name}
           </h1>
-          <p className="mt-2 text-white/85 text-[15px]">
-            {formatVN(trip.startDate)} – {formatVN(trip.endDate)} · {tripLen} ngày
-          </p>
-        </motion.div>
-
-        {/* Floating "countdown" pill */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.55, type: "spring", stiffness: 260, damping: 22 }}
-          className="absolute right-5 bottom-[56px] rounded-full px-4 py-2.5 text-sm font-semibold shadow-[var(--shadow-md)]"
-          style={{ background: "var(--accent-leaf)", color: "var(--nature-900)" }}
-        >
-          {dayBadge}
+          <div className="mt-3 flex items-center gap-2.5">
+            <p className="text-white/80 text-[15px]">
+              {formatVN(trip.startDate)} – {formatVN(trip.endDate)} · {tripLen} ngày
+            </p>
+            <motion.span
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.55, type: "spring", stiffness: 260, damping: 22 }}
+              className="rounded-full px-3 py-1 text-[13px] font-bold shadow-[var(--shadow-sm)] whitespace-nowrap"
+              style={{ background: "var(--accent-leaf)", color: "var(--nature-900)" }}
+            >
+              {dayBadge}
+            </motion.span>
+          </div>
         </motion.div>
       </section>
 
@@ -170,34 +171,34 @@ export default function HomePage() {
             >
               <div className="p-5 text-white">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] uppercase tracking-[0.18em] opacity-70">
+                  <span className="text-[13px] uppercase tracking-[0.18em] opacity-80 font-semibold">
                     Điểm dừng tiếp theo
                   </span>
                   <span
-                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                    className="text-[13px] font-bold px-2.5 py-1 rounded-full"
                     style={{ background: "var(--accent-leaf)", color: "var(--nature-900)" }}
                   >
                     Ngày {nextActivity.day}
                   </span>
                 </div>
-                <h3 className="mt-3 text-[22px] font-bold leading-tight">
+                <h3 className="mt-3 text-[24px] font-bold leading-tight">
                   {nextActivity.activity}
                 </h3>
-                <div className="mt-1.5 flex items-center gap-1.5 text-white/70 text-[13px]">
-                  <MapPinned className="w-[14px] h-[14px]" />
+                <div className="mt-1.5 flex items-center gap-1.5 text-white/70 text-[15px]">
+                  <MapPinned className="w-[16px] h-[16px]" />
                   <span className="truncate">{nextActivity.location}</span>
                 </div>
                 <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-white/60 text-[13px]">
-                    <Calendar className="w-[14px] h-[14px]" />
+                  <div className="flex items-center gap-1.5 text-white/60 text-[15px]">
+                    <Calendar className="w-[16px] h-[16px]" />
                     <span>{nextActivity.date} · {nextActivity.time || "—"}</span>
                   </div>
                   <span
-                    className="inline-flex items-center gap-1 font-semibold text-[13px] px-3 py-1.5 rounded-full"
+                    className="inline-flex items-center gap-1 font-semibold text-[14px] px-3 py-1.5 rounded-full"
                     style={{ background: "rgba(255,255,255,0.12)" }}
                   >
                     Mở lịch trình
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    <ArrowUpRight className="w-4 h-4" />
                   </span>
                 </div>
               </div>
@@ -226,12 +227,12 @@ export default function HomePage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.16em]" style={{ color: "var(--surface-muted)" }}>
+            <p className="text-[13px] uppercase tracking-[0.16em]" style={{ color: "var(--surface-muted)" }}>
               Hành trình
             </p>
-            <p className="text-[26px] font-bold mt-1" style={{ color: "var(--nature-900)" }}>
+            <p className="text-[28px] font-bold mt-1" style={{ color: "var(--nature-900)" }}>
               {visitedCount}
-              <span className="text-[15px] font-medium" style={{ color: "var(--surface-muted)" }}>
+              <span className="text-[17px] font-medium ml-1" style={{ color: "var(--surface-muted)" }}>
                 /{totalItems} địa điểm
               </span>
             </p>
@@ -251,7 +252,7 @@ export default function HomePage() {
 
       {/* ── SPENDING PODS ── */}
       <section className="mt-5 px-5">
-        <p className="text-[11px] uppercase tracking-[0.16em] mb-3" style={{ color: "var(--surface-muted)" }}>
+        <p className="text-[13px] uppercase tracking-[0.16em] mb-3" style={{ color: "var(--surface-muted)" }}>
           Chi tiêu
         </p>
         <div className="grid grid-cols-2 gap-3">
@@ -280,8 +281,8 @@ export default function HomePage() {
           className="mt-3 rounded-[24px] p-5 shadow-[var(--shadow-md)] text-white"
           style={{ background: "linear-gradient(135deg,var(--nature-700),var(--nature-900))" }}
         >
-          <p className="text-[11px] uppercase tracking-[0.16em] opacity-70">Tổng chi tiêu</p>
-          <div className="mt-3 grid grid-cols-3 gap-3">
+          <p className="text-[13px] uppercase tracking-[0.16em] opacity-80 font-semibold">Tổng chi tiêu</p>
+          <div className="mt-4 grid grid-cols-3 gap-3">
             <Stat label="Dự toán" value={summary.estimated.VND} tone="soft" />
             <Stat label="Thực tế" value={summary.actual.VND} tone="bright" />
             <Stat
@@ -365,7 +366,7 @@ function ProgressRing({ value }: { value: number }) {
         transition={{ duration: 1, ease: [0.22, 0.68, 0, 1], delay: 0.2 }}
       />
       <text x="32" y="36" textAnchor="middle" transform="rotate(90 32 32)"
-        fontSize="13" fontWeight="700" fill="var(--nature-900)">
+        fontSize="14" fontWeight="700" fill="var(--nature-900)">
         {Math.round(value * 100)}%
       </text>
     </svg>
@@ -387,11 +388,11 @@ function SpendPod({
       className="rounded-[20px] p-4 shadow-[var(--shadow-sm)]"
       style={{ background: bg }}
     >
-      <p className="text-[12px] font-semibold" style={{ color: ink }}>{label}</p>
-      <p className="mt-2 text-[20px] font-bold leading-tight" style={{ color: ink }}>
-        {vnd.toLocaleString()}<span className="text-[11px] font-medium opacity-70">đ</span>
+      <p className="text-[14px] font-bold" style={{ color: ink }}>{label}</p>
+      <p className="mt-2 text-[22px] font-bold leading-tight" style={{ color: ink }}>
+        {vnd.toLocaleString()}<span className="text-[13px] font-medium opacity-70 ml-0.5">đ</span>
       </p>
-      <p className="mt-1 text-[11px]" style={{ color: ink, opacity: 0.7 }}>
+      <p className="mt-1 text-[13px]" style={{ color: ink, opacity: 0.7 }}>
         {sgd.toFixed(1)} SGD · {myr.toFixed(1)} MYR
       </p>
     </motion.div>
@@ -405,9 +406,9 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: "sof
     tone === "bad" ? "#ffb4b4" : "rgba(255,255,255,0.85)";
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wide opacity-70">{label}</p>
-      <p className="mt-1 text-[17px] font-bold leading-tight" style={{ color }}>
-        {value.toLocaleString()}<span className="text-[10px] font-medium opacity-70">đ</span>
+      <p className="text-[13px] uppercase tracking-wide opacity-80 font-semibold">{label}</p>
+      <p className="mt-1 text-[18px] font-bold leading-tight" style={{ color }}>
+        {value.toLocaleString()}<span className="text-[12px] font-medium opacity-70 ml-0.5">đ</span>
       </p>
     </div>
   );

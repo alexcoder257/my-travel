@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -196,6 +196,8 @@
     background: var(--surface-body);
     color: var(--surface-ink);
     font-feature-settings: "ss01", "cv11";
+    font-size: 17px;
+    line-height: 1.6;
   }
   html {
     @apply font-sans;

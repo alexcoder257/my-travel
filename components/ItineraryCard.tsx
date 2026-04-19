@@ -230,54 +230,55 @@ export function ItineraryCard({
           />
         )}
 
-        <div className="p-4 flex gap-3">
-          {/* Category tile + check */}
-          <div className="flex flex-col items-center gap-2 flex-shrink-0">
-            <div
-              className="w-12 h-12 rounded-2xl grid place-items-center text-xl shadow-[var(--shadow-sm)]"
-              style={{ background: cat.tint }}
-              aria-hidden
-            >
-              {cat.emoji}
-            </div>
-            <button
-              type="button"
-              onClick={handleToggleQuick}
-              disabled={submitting}
-              aria-pressed={item.visited}
-              aria-label={item.visited ? "Bỏ đánh dấu đã đến" : "Đánh dấu đã đến"}
-              className="w-7 h-7 rounded-full grid place-items-center transition-transform active:scale-90"
-              style={{
-                background: item.visited ? "var(--nature-600)" : "transparent",
-                border: item.visited
-                  ? "1px solid var(--nature-600)"
-                  : "1.5px dashed var(--sand-400)",
-              }}
-            >
-              {item.visited && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
-            </button>
-          </div>
+        <div className="p-3 flex gap-2.5 items-center">
+          {/* Check button — vertically centred standalone */}
+          <button
+            type="button"
+            onClick={handleToggleQuick}
+            disabled={submitting}
+            aria-pressed={item.visited}
+            aria-label={item.visited ? "Bỏ đánh dấu đã đến" : "Đánh dấu đã đến"}
+            className="w-6 h-6 rounded-full grid place-items-center flex-shrink-0 self-center transition-transform active:scale-90"
+            style={{
+              background: item.visited ? "var(--nature-600)" : "transparent",
+              border: item.visited
+                ? "1px solid var(--nature-600)"
+                : "1.5px dashed var(--sand-400)",
+            }}
+          >
+            {item.visited && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+          </button>
 
           {/* Main */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-1.5">
+              {/* Emoji tile + title inline */}
               <button
                 type="button"
                 onClick={() => setIsExpanded((v) => !v)}
-                className="text-left flex-1 min-w-0"
+                className="text-left flex-1 min-w-0 flex items-start gap-2"
               >
-                <h3
-                  className="font-bold text-[15px] leading-snug truncate"
-                  style={{ color: "var(--nature-900)" }}
+                <div
+                  className="w-8 h-8 rounded-xl grid place-items-center text-base flex-shrink-0"
+                  style={{ background: cat.tint }}
+                  aria-hidden
                 >
-                  {item.activity}
-                </h3>
-                <p
-                  className="text-[13px] truncate mt-0.5"
-                  style={{ color: "var(--surface-muted)" }}
-                >
-                  {item.location}
-                </p>
+                  {cat.emoji}
+                </div>
+                <div className="min-w-0 pt-0.5">
+                  <h3
+                    className={`font-bold text-[14px] leading-snug ${isExpanded ? "whitespace-normal" : "truncate"}`}
+                    style={{ color: "var(--nature-900)" }}
+                  >
+                    {item.activity}
+                  </h3>
+                  <p
+                    className={`text-[12px] mt-0.5 ${isExpanded ? "whitespace-normal" : "truncate"}`}
+                    style={{ color: "var(--surface-muted)" }}
+                  >
+                    {item.location}
+                  </p>
+                </div>
               </button>
 
               {/* Kebab */}
@@ -335,10 +336,10 @@ export function ItineraryCard({
 
             {/* Meta row */}
             <div
-              className="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-[12px]"
+              className="mt-1.5 flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[12px]"
               style={{ color: "var(--surface-muted)" }}
             >
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-0.5">
                 <Clock className="w-3 h-3" />
                 <span className="font-semibold" style={{ color: "var(--nature-700)" }}>
                   {item.time || "—"}
@@ -349,7 +350,7 @@ export function ItineraryCard({
               <span>·</span>
               <span className="font-semibold" style={{ color: "var(--nature-800)" }}>
                 ~{item.estimatedPrice.amount}
-                <span className="ml-0.5 opacity-70 text-[10px]">
+                <span className="ml-0.5 opacity-70 text-[11px]">
                   {item.estimatedPrice.currency}
                 </span>
               </span>
@@ -362,19 +363,19 @@ export function ItineraryCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
+                className="mt-1.5 inline-flex items-center gap-0.5 text-[12px] font-semibold"
                 style={{ color: "var(--nature-600)" }}
               >
-                <MapPin className="w-3.5 h-3.5" />
+                <MapPin className="w-3 h-3" />
                 Mở Google Maps
-                <ArrowUpRight className="w-3 h-3" />
+                <ArrowUpRight className="w-2.5 h-2.5" />
               </a>
             )}
 
             {/* Notes preview */}
             {item.notes && !isExpanded && (
               <p
-                className="mt-2 text-[12px] line-clamp-1"
+                className="mt-1.5 text-[12px] line-clamp-1"
                 style={{ color: "var(--surface-muted)" }}
               >
                 {item.notes}
@@ -383,7 +384,7 @@ export function ItineraryCard({
 
             {item.visited && visitedPlace?.notes && !isExpanded && (
               <div
-                className="mt-2 inline-flex items-center gap-1 text-[12px] px-2 py-1 rounded-full max-w-full"
+                className="mt-1.5 inline-flex items-center gap-1 text-[12px] px-2 py-0.5 rounded-full max-w-full"
                 style={{
                   background: "var(--sand-100)",
                   color: "var(--nature-700)",
@@ -395,7 +396,7 @@ export function ItineraryCard({
             )}
 
             {/* Move + expand controls row */}
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-2 flex items-center justify-between">
               <div className="flex items-center gap-0.5">
                 <button
                   onClick={onMoveUp}
@@ -418,7 +419,7 @@ export function ItineraryCard({
               </div>
               <button
                 onClick={() => setIsExpanded((v) => !v)}
-                className="text-[12px] font-semibold inline-flex items-center gap-1 px-3 py-1.5 rounded-full"
+                className="text-[12px] font-semibold inline-flex items-center gap-1 px-2.5 py-1 rounded-full"
                 style={{
                   background: isExpanded ? "var(--nature-100)" : "var(--sand-100)",
                   color: "var(--nature-700)",
@@ -426,9 +427,9 @@ export function ItineraryCard({
               >
                 {isExpanded ? "Thu gọn" : "Chi tiết"}
                 {isExpanded ? (
-                  <ChevronUp className="w-3.5 h-3.5" />
+                  <ChevronUp className="w-3 h-3" />
                 ) : (
-                  <ChevronDown className="w-3.5 h-3.5" />
+                  <ChevronDown className="w-3 h-3" />
                 )}
               </button>
             </div>
@@ -450,7 +451,7 @@ export function ItineraryCard({
                   >
                     {item.notes && (
                       <p
-                        className="text-[12.5px] rounded-2xl p-3 leading-relaxed"
+                        className="text-[15px] rounded-2xl p-3 leading-relaxed"
                         style={{
                           background: "var(--sand-100)",
                           color: "var(--nature-800)",
@@ -463,7 +464,7 @@ export function ItineraryCard({
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <label
-                          className="text-[12px] font-semibold uppercase tracking-wide"
+                          className="text-[14px] font-semibold uppercase tracking-wide"
                           style={{ color: "var(--surface-muted)" }}
                         >
                           Chi tiêu thực tế
@@ -474,7 +475,7 @@ export function ItineraryCard({
                             setPriceCurrency(e.target.value as "SGD" | "MYR" | "VND")
                           }
                           disabled={item.visited && !!visitedPlace}
-                          className="px-2.5 py-1 rounded-full text-[12px] font-semibold outline-none"
+                          className="px-2.5 py-1 rounded-full text-[16px] font-semibold outline-none"
                           style={{
                             background: "var(--sand-100)",
                             color: "var(--nature-800)",
@@ -503,10 +504,10 @@ export function ItineraryCard({
 
                     <div>
                       <label
-                        className="flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wide mb-2"
+                        className="flex items-center gap-1 text-[14px] font-semibold uppercase tracking-wide mb-2"
                         style={{ color: "var(--surface-muted)" }}
                       >
-                        <NotebookPen className="w-3.5 h-3.5" />
+                        <NotebookPen className="w-4 h-4" />
                         Ghi chú trải nghiệm
                       </label>
                       <textarea
@@ -514,7 +515,7 @@ export function ItineraryCard({
                         onChange={(e) => setUserNote(e.target.value)}
                         placeholder="Viết cảm nhận, tip hoặc ghi chú cá nhân…"
                         rows={3}
-                        className="w-full px-3 py-2.5 rounded-2xl outline-none focus:ring-2 text-sm resize-none"
+                        className="w-full px-3 py-2.5 rounded-2xl outline-none focus:ring-2 text-[16px] resize-none"
                         style={{
                           background: "var(--sand-100)",
                           color: "var(--nature-900)",
@@ -610,7 +611,7 @@ function SpendInput({
   return (
     <div>
       <label
-        className="text-[11px] mb-1 block"
+        className="text-[13px] mb-1 block"
         style={{ color: "var(--surface-muted)" }}
       >
         {label}
@@ -622,7 +623,7 @@ function SpendInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder="0.00"
         disabled={disabled}
-        className="w-full px-3 py-2 rounded-xl outline-none focus:ring-2 text-sm"
+        className="w-full px-3 py-2 rounded-xl outline-none focus:ring-2 text-[16px]"
         style={{
           background: "var(--sand-100)",
           color: "var(--nature-900)",
