@@ -2,10 +2,8 @@
 
 import { ItineraryItem, VisitedPlace } from "@/types/index";
 import {
-  CheckCircle2,
-  Circle,
+  Check,
   MapPin,
-  DollarSign,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -13,9 +11,10 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  ArrowUpRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   addVisitedPlace,
   subscribeToVisitedPlaceByItemId,
@@ -36,9 +35,23 @@ interface ItineraryCardProps {
   onMoveDown?: () => void;
 }
 
-export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMoveDown }: ItineraryCardProps) {
+const CATEGORY_META: Record<
+  string,
+  { emoji: string; tint: string; label: string }
+> = {
+  food: { emoji: "🍜", tint: "linear-gradient(135deg,#fff3d6,#ffd98a)", label: "Ăn uống" },
+  place: { emoji: "📍", tint: "linear-gradient(135deg,#e7f1e2,#b8dbb0)", label: "Địa điểm" },
+  transport: { emoji: "🚌", tint: "linear-gradient(135deg,#e0ecff,#b8cdff)", label: "Di chuyển" },
+  other: { emoji: "✦", tint: "linear-gradient(135deg,#f1e7ff,#d7c1ff)", label: "Khác" },
+};
 
-
+export function ItineraryCard({
+  item,
+  onToggleVisited,
+  onDeleted,
+  onMoveUp,
+  onMoveDown,
+}: ItineraryCardProps) {
   const toast = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -54,9 +67,7 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
   );
   const [userNote, setUserNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // Removed unused setMapUrl, setTime
   const [mapUrl] = useState(item.mapUrl || "");
-  const [time] = useState(item.time);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
@@ -66,25 +77,10 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
         setFoodAmount(place.foodCost?.amount?.toString() || "");
         setTransportAmount(place.transportCost?.amount?.toString() || "");
         setPriceCurrency(
-          place.foodCost?.currency || place.transportCost?.currency || item.estimatedPrice.currency || "SGD"
-        );
-        setUserNote(place.notes || "");
-      } else {
-        setFoodAmount("");
-        setTransportAmount("");
-        setUserNote("");
-      }
-    });
-    return () => unsubscribe();
-  }, [item.id]);
-  useEffect(() => {
-    const unsubscribe = subscribeToVisitedPlaceByItemId(item.id, (place) => {
-      setVisitedPlace(place);
-      if (place) {
-        setFoodAmount(place.foodCost?.amount?.toString() || "");
-        setTransportAmount(place.transportCost?.amount?.toString() || "");
-        setPriceCurrency(
-          place.foodCost?.currency || place.transportCost?.currency || item.estimatedPrice.currency || "SGD"
+          place.foodCost?.currency ||
+            place.transportCost?.currency ||
+            item.estimatedPrice.currency ||
+            "SGD"
         );
         setUserNote(place.notes || "");
       } else {
@@ -129,8 +125,14 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
       try {
         setSubmitting(true);
         await addVisitedPlace(item.id, {
-          foodCost: { amount: foodAmount ? parseFloat(foodAmount) : 0, currency: priceCurrency },
-          transportCost: { amount: transportAmount ? parseFloat(transportAmount) : 0, currency: priceCurrency },
+          foodCost: {
+            amount: foodAmount ? parseFloat(foodAmount) : 0,
+            currency: priceCurrency,
+          },
+          transportCost: {
+            amount: transportAmount ? parseFloat(transportAmount) : 0,
+            currency: priceCurrency,
+          },
           imageUrls: [],
           notes: userNote,
           visitedAt: new Date(),
@@ -144,8 +146,6 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
     }
   };
 
-  // Removed unused handleTimeBlur
-
   const handleSaveVisit = async () => {
     try {
       setSubmitting(true);
@@ -153,8 +153,14 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
         await updateItineraryItem(item.id, { mapUrl });
       }
       await addVisitedPlace(item.id, {
-        foodCost: { amount: foodAmount ? parseFloat(foodAmount) : 0, currency: priceCurrency },
-        transportCost: { amount: transportAmount ? parseFloat(transportAmount) : 0, currency: priceCurrency },
+        foodCost: {
+          amount: foodAmount ? parseFloat(foodAmount) : 0,
+          currency: priceCurrency,
+        },
+        transportCost: {
+          amount: transportAmount ? parseFloat(transportAmount) : 0,
+          currency: priceCurrency,
+        },
         imageUrls: [],
         notes: userNote,
         visitedAt: new Date(),
@@ -174,6 +180,7 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
     try {
       setSubmitting(true);
       await updateVisitedPlace(visitedPlace.id, { notes: userNote });
+      toast.success("Đã lưu ghi chú.");
     } catch (error) {
       console.error("Failed to update note:", error);
       toast.error("Cập nhật ghi chú thất bại.");
@@ -181,8 +188,6 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
       setSubmitting(false);
     }
   };
-
-  // Removed unused handleUpdateMapUrl
 
   const confirmDeleteVisit = async () => {
     try {
@@ -199,242 +204,370 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
     }
   };
 
+  const cat = CATEGORY_META[item.category || "other"] || CATEGORY_META.other;
+
   return (
     <>
-      <div
-        className={`p-4 border rounded-lg transition ${
-          item.visited ? "bg-green-50 border-green-200" : "bg-white border-gray-200"
-        }`}
+      <motion.article
+        layout
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ duration: 0.45, ease: [0.22, 0.68, 0, 1] }}
+        className="relative rounded-[22px] overflow-hidden"
+        style={{
+          background: "var(--surface-card)",
+          boxShadow: item.visited
+            ? "0 6px 18px rgba(54,93,47,0.14)"
+            : "var(--shadow-sm)",
+        }}
       >
+        {/* Visited ribbon accent */}
+        {item.visited && (
+          <div
+            className="absolute inset-y-0 left-0 w-[4px]"
+            style={{ background: "var(--nature-500)" }}
+          />
+        )}
 
-        <div className="flex gap-0.5 md:gap-2 items-center">
-          {/* Up/Down controls */}
-          <div className="flex flex-col mr-1">
-            <button
-              className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30"
-              onClick={onMoveUp}
-              disabled={!onMoveUp}
-              title="Di chuyển lên"
-              type="button"
+        <div className="p-4 flex gap-3">
+          {/* Category tile + check */}
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            <div
+              className="w-12 h-12 rounded-2xl grid place-items-center text-xl shadow-[var(--shadow-sm)]"
+              style={{ background: cat.tint }}
+              aria-hidden
             >
-              <ChevronUp className="w-4 h-4" />
-            </button>
+              {cat.emoji}
+            </div>
             <button
-              className="p-1 text-gray-400 hover:text-blue-600 disabled:opacity-30"
-              onClick={onMoveDown}
-              disabled={!onMoveDown}
-              title="Di chuyển xuống"
               type="button"
+              onClick={handleToggleQuick}
+              disabled={submitting}
+              aria-pressed={item.visited}
+              aria-label={item.visited ? "Bỏ đánh dấu đã đến" : "Đánh dấu đã đến"}
+              className="w-7 h-7 rounded-full grid place-items-center transition-transform active:scale-90"
+              style={{
+                background: item.visited ? "var(--nature-600)" : "transparent",
+                border: item.visited
+                  ? "1px solid var(--nature-600)"
+                  : "1.5px dashed var(--sand-400)",
+              }}
             >
-              <ChevronDown className="w-4 h-4" />
+              {item.visited && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
             </button>
           </div>
 
-
-          {/* Check button — visually compact, touch area preserved */}
-          <button
-            type="button"
-            onClick={handleToggleQuick}
-            disabled={submitting}
-            className="flex-shrink-0 p-1 md:p-2.5 hover:scale-110 transition-transform disabled:opacity-50 flex items-center justify-center"
-            style={{ minWidth: 32, minHeight: 32 }}
-          >
-            {item.visited ? (
-              <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
-            ) : (
-              <Circle className="w-5 h-5 md:w-6 md:h-6 text-gray-300" />
-            )}
-          </button>
-
+          {/* Main */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-4">
-              <div onClick={() => setIsExpanded(!isExpanded)} className="cursor-pointer flex-1">
-                <h3 className="font-semibold text-gray-900">{item.activity}</h3>
-                <p className="text-sm text-gray-600">{item.location}</p>
-                {item.mapUrl && (
-                  <a
-                    href={item.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 mt-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MapPin className="w-3 h-3" />
-                    Xem trên Google Maps
-                  </a>
-                )}
-              </div>
-              <div className="flex items-start gap-1 flex-shrink-0">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-700">
-                    ~{item.estimatedPrice.amount}
-                    <span className="text-xs ml-1">{item.estimatedPrice.currency}</span>
-                  </p>
-                  <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="text-gray-400 hover:text-gray-600 mt-1"
-                  >
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                </div>
+            <div className="flex items-start justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setIsExpanded((v) => !v)}
+                className="text-left flex-1 min-w-0"
+              >
+                <h3
+                  className="font-bold text-[15px] leading-snug truncate"
+                  style={{ color: "var(--nature-900)" }}
+                >
+                  {item.activity}
+                </h3>
+                <p
+                  className="text-[13px] truncate mt-0.5"
+                  style={{ color: "var(--surface-muted)" }}
+                >
+                  {item.location}
+                </p>
+              </button>
 
-                {/* Kebab menu */}
-                <div ref={menuRef} className="relative">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
-                    className="p-1 rounded text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
+              {/* Kebab */}
+              <div ref={menuRef} className="relative flex-shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen((o) => !o);
+                  }}
+                  aria-label="Tuỳ chọn"
+                  className="w-8 h-8 rounded-full grid place-items-center transition-colors"
+                  style={{ color: "var(--surface-muted)" }}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                <AnimatePresence>
                   {menuOpen && (
-                    <div className="absolute right-0 top-7 z-50 w-36 bg-white border border-gray-200 rounded-lg shadow-lg py-1 animate-in fade-in zoom-in-95 duration-100">
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute right-0 top-9 z-30 w-36 rounded-2xl overflow-hidden shadow-[var(--shadow-lg)]"
+                      style={{ background: "var(--surface-card)" }}
+                    >
                       <button
-                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowEditModal(true); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(false);
+                          setShowEditModal(true);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--sand-100)]"
+                        style={{ color: "var(--nature-900)" }}
                       >
-                        <Pencil className="w-3.5 h-3.5 text-blue-500" />
+                        <Pencil className="w-3.5 h-3.5" />
                         Sửa
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowDeleteItemModal(true); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(false);
+                          setShowDeleteItemModal(true);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--sand-100)]"
+                        style={{ color: "var(--accent-berry)" }}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         Xóa
                       </button>
-                    </div>
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
               </div>
             </div>
 
-            {/* Time + Date row */}
-            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-              <span>{item.date}</span>
-              <div className="flex items-center gap-1">
+            {/* Meta row */}
+            <div
+              className="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-[12px]"
+              style={{ color: "var(--surface-muted)" }}
+            >
+              <span className="inline-flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                <span className="text-xs font-medium text-blue-600">{item.time}</span>
-              </div>
+                <span className="font-semibold" style={{ color: "var(--nature-700)" }}>
+                  {item.time || "—"}
+                </span>
+              </span>
+              <span>·</span>
+              <span>{item.date}</span>
+              <span>·</span>
+              <span className="font-semibold" style={{ color: "var(--nature-800)" }}>
+                ~{item.estimatedPrice.amount}
+                <span className="ml-0.5 opacity-70 text-[10px]">
+                  {item.estimatedPrice.currency}
+                </span>
+              </span>
             </div>
 
-            {/* Notes preview (collapsed) */}
-            {item.notes && !isExpanded && (
-              <p className="mt-2 text-xs text-gray-500 line-clamp-1">{item.notes}</p>
+            {/* Map link */}
+            {item.mapUrl && (
+              <a
+                href={item.mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
+                style={{ color: "var(--nature-600)" }}
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                Mở Google Maps
+                <ArrowUpRight className="w-3 h-3" />
+              </a>
             )}
 
-            {/* Experience note badge */}
+            {/* Notes preview */}
+            {item.notes && !isExpanded && (
+              <p
+                className="mt-2 text-[12px] line-clamp-1"
+                style={{ color: "var(--surface-muted)" }}
+              >
+                {item.notes}
+              </p>
+            )}
+
             {item.visited && visitedPlace?.notes && !isExpanded && (
-              <div className="mt-1 flex items-center gap-1 text-xs text-indigo-600">
-                <NotebookPen className="w-3 h-3" />
+              <div
+                className="mt-2 inline-flex items-center gap-1 text-[12px] px-2 py-1 rounded-full max-w-full"
+                style={{
+                  background: "var(--sand-100)",
+                  color: "var(--nature-700)",
+                }}
+              >
+                <NotebookPen className="w-3 h-3 flex-shrink-0" />
                 <span className="line-clamp-1">{visitedPlace.notes}</span>
               </div>
             )}
 
-
-            {/* Expanded panel */}
-            {isExpanded && (
-              <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
-                {/* Full notes (itinerary guide) */}
-                {item.notes && (
-                  <p className="text-xs text-gray-500 bg-gray-50 rounded p-2 leading-relaxed">{item.notes}</p>
-                )}
-
-                {/* Actual spend */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Chi tiêu thực tế</label>
-                    <select
-                      value={priceCurrency}
-                      onChange={(e) => setPriceCurrency(e.target.value as any)}
-                      className="px-2 py-1 border border-gray-300 rounded text-sm"
-                      disabled={item.visited && !!visitedPlace}
-                    >
-                      <option value="SGD">SGD</option>
-                      <option value="MYR">MYR</option>
-                      <option value="VND">VND</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">🍜 Ăn uống</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={foodAmount}
-                          onChange={(e) => setFoodAmount(e.target.value)}
-                          placeholder="0.00"
-                          className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          disabled={item.visited && !!visitedPlace}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">🚗 Di chuyển</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={transportAmount}
-                          onChange={(e) => setTransportAmount(e.target.value)}
-                          placeholder="0.00"
-                          className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          disabled={item.visited && !!visitedPlace}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Experience note */}
-                <div>
-                  <label className="flex items-center gap-1 text-sm font-medium text-gray-700 mb-2">
-                    <NotebookPen className="w-4 h-4 text-indigo-500" />
-                    Ghi chú trải nghiệm
-                  </label>
-                  <textarea
-                    value={userNote}
-                    onChange={(e) => setUserNote(e.target.value)}
-                    placeholder="Viết cảm nhận, tip hoặc ghi chú cá nhân về địa điểm này..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm resize-none"
-                  />
-                </div>
-
-                {/* Action buttons */}
-                {!item.visited && (
-                  <Button onClick={handleSaveVisit} disabled={submitting} className="w-full mt-2 py-3 min-h-[44px]">
-                    {submitting ? "Đang lưu..." : "Đánh dấu đã đến & Lưu chi tiêu"}
-                  </Button>
-                )}
-
-                {item.visited && visitedPlace && userNote !== (visitedPlace.notes || "") && (
-                  <Button
-                    onClick={handleUpdateNote}
-                    disabled={submitting}
-                    variant="outline"
-                    className="w-full mt-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50"
-                  >
-                    {submitting ? "Đang lưu..." : "Lưu ghi chú"}
-                  </Button>
-                )}
-
-                {item.visited && visitedPlace && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDeleteModalOpen(true)}
-                    className="w-full mt-1 text-red-600 border-red-200 hover:bg-red-50"
-                  >
-                    Xóa thông tin chi tiêu
-                  </Button>
-                )}
+            {/* Move + expand controls row */}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={onMoveUp}
+                  disabled={!onMoveUp}
+                  aria-label="Lên"
+                  className="w-7 h-7 rounded-full grid place-items-center disabled:opacity-30"
+                  style={{ color: "var(--surface-muted)" }}
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={onMoveDown}
+                  disabled={!onMoveDown}
+                  aria-label="Xuống"
+                  className="w-7 h-7 rounded-full grid place-items-center disabled:opacity-30"
+                  style={{ color: "var(--surface-muted)" }}
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
               </div>
-            )}
+              <button
+                onClick={() => setIsExpanded((v) => !v)}
+                className="text-[12px] font-semibold inline-flex items-center gap-1 px-3 py-1.5 rounded-full"
+                style={{
+                  background: isExpanded ? "var(--nature-100)" : "var(--sand-100)",
+                  color: "var(--nature-700)",
+                }}
+              >
+                {isExpanded ? "Thu gọn" : "Chi tiết"}
+                {isExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+
+            {/* Expanded */}
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.div
+                  key="expanded"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: [0.22, 0.68, 0, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div
+                    className="mt-4 pt-4 space-y-4"
+                    style={{ borderTop: "1px dashed var(--sand-300)" }}
+                  >
+                    {item.notes && (
+                      <p
+                        className="text-[12.5px] rounded-2xl p-3 leading-relaxed"
+                        style={{
+                          background: "var(--sand-100)",
+                          color: "var(--nature-800)",
+                        }}
+                      >
+                        {item.notes}
+                      </p>
+                    )}
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label
+                          className="text-[12px] font-semibold uppercase tracking-wide"
+                          style={{ color: "var(--surface-muted)" }}
+                        >
+                          Chi tiêu thực tế
+                        </label>
+                        <select
+                          value={priceCurrency}
+                          onChange={(e) =>
+                            setPriceCurrency(e.target.value as "SGD" | "MYR" | "VND")
+                          }
+                          disabled={item.visited && !!visitedPlace}
+                          className="px-2.5 py-1 rounded-full text-[12px] font-semibold outline-none"
+                          style={{
+                            background: "var(--sand-100)",
+                            color: "var(--nature-800)",
+                          }}
+                        >
+                          <option value="SGD">SGD</option>
+                          <option value="MYR">MYR</option>
+                          <option value="VND">VND</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <SpendInput
+                          label="🍜 Ăn uống"
+                          value={foodAmount}
+                          onChange={setFoodAmount}
+                          disabled={item.visited && !!visitedPlace}
+                        />
+                        <SpendInput
+                          label="🚗 Di chuyển"
+                          value={transportAmount}
+                          onChange={setTransportAmount}
+                          disabled={item.visited && !!visitedPlace}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        className="flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wide mb-2"
+                        style={{ color: "var(--surface-muted)" }}
+                      >
+                        <NotebookPen className="w-3.5 h-3.5" />
+                        Ghi chú trải nghiệm
+                      </label>
+                      <textarea
+                        value={userNote}
+                        onChange={(e) => setUserNote(e.target.value)}
+                        placeholder="Viết cảm nhận, tip hoặc ghi chú cá nhân…"
+                        rows={3}
+                        className="w-full px-3 py-2.5 rounded-2xl outline-none focus:ring-2 text-sm resize-none"
+                        style={{
+                          background: "var(--sand-100)",
+                          color: "var(--nature-900)",
+                        }}
+                      />
+                    </div>
+
+                    {!item.visited && (
+                      <button
+                        onClick={handleSaveVisit}
+                        disabled={submitting}
+                        className="w-full rounded-full py-3 font-semibold text-sm text-white active:scale-[.98] transition"
+                        style={{ background: "var(--nature-700)" }}
+                      >
+                        {submitting ? "Đang lưu…" : "Đánh dấu đã đến & Lưu chi tiêu"}
+                      </button>
+                    )}
+
+                    {item.visited &&
+                      visitedPlace &&
+                      userNote !== (visitedPlace.notes || "") && (
+                        <button
+                          onClick={handleUpdateNote}
+                          disabled={submitting}
+                          className="w-full rounded-full py-2.5 text-sm font-semibold"
+                          style={{
+                            background: "var(--nature-100)",
+                            color: "var(--nature-800)",
+                          }}
+                        >
+                          {submitting ? "Đang lưu…" : "Lưu ghi chú"}
+                        </button>
+                      )}
+
+                    {item.visited && visitedPlace && (
+                      <button
+                        onClick={() => setIsDeleteModalOpen(true)}
+                        className="w-full rounded-full py-2.5 text-sm font-semibold"
+                        style={{
+                          background: "rgba(177,69,82,0.08)",
+                          color: "var(--accent-berry)",
+                        }}
+                      >
+                        Xóa thông tin chi tiêu
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
-      </div>
+      </motion.article>
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}
@@ -460,5 +593,41 @@ export function ItineraryCard({ item, onToggleVisited, onDeleted, onMoveUp, onMo
         <EditItemModal item={item} onClose={() => setShowEditModal(false)} />
       )}
     </>
+  );
+}
+
+function SpendInput({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div>
+      <label
+        className="text-[11px] mb-1 block"
+        style={{ color: "var(--surface-muted)" }}
+      >
+        {label}
+      </label>
+      <input
+        type="number"
+        step="0.01"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="0.00"
+        disabled={disabled}
+        className="w-full px-3 py-2 rounded-xl outline-none focus:ring-2 text-sm"
+        style={{
+          background: "var(--sand-100)",
+          color: "var(--nature-900)",
+        }}
+      />
+    </div>
   );
 }

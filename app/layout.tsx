@@ -30,10 +30,15 @@ export default function RootLayout({
       lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body
+        className="min-h-full flex flex-col"
+        style={{ background: "var(--surface-body)" }}
+      >
         <ToastProvider>
+          <main className="flex-1 pb-[calc(88px+env(safe-area-inset-bottom))]">
+            {children}
+          </main>
           <Navbar />
-          <main className="flex-1 pb-20 md:pb-0">{children}</main>
           <Toaster />
         </ToastProvider>
       </body>

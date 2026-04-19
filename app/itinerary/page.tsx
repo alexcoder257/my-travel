@@ -3,12 +3,14 @@
 import { useItinerary } from "@/hooks/useItinerary";
 import { ItineraryCard } from "@/components/ItineraryCard";
 import { ImportDialog } from "@/components/ImportDialog";
-import { Loader, FileUp, Search, X } from "lucide-react";
+import { Loader, FileUp, Search, X, Trash2 } from "lucide-react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { updateItineraryItem } from "@/lib/firestore";
+import { updateItineraryItem, deleteAllItineraryItems } from "@/lib/firestore";
 import { ItineraryItem } from "@/types/index";
 import { CreateItemModal } from "@/components/CreateItemModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { useToast } from "@/contexts/ToastContext";
 
 type CategoryFilter = "all" | "food" | "place" | "transport" | "other";
 type StatusFilter = "all" | "visited" | "unvisited";
@@ -23,7 +25,10 @@ function getCountry(item: ItineraryItem): "sg" | "my" | "both" {
 
 export default function ItineraryPage() {
   const { items: initialItems, loading, toggleVisited } = useItinerary();
+  const toast = useToast();
   const [items, setItems] = useState(initialItems);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const scrollToId =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("scrollTo")
@@ -56,6 +61,19 @@ export default function ItineraryPage() {
 
   const isFiltering =
     search.trim() !== "" || country !== "all" || day !== "all" || category !== "all" || status !== "all";
+
+  const handleDeleteAll = async () => {
+    setDeleting(true);
+    try {
+      await deleteAllItineraryItems();
+      toast.success("Đã xóa toàn bộ lịch trình.");
+    } catch {
+      toast.error("Xóa thất bại, thử lại.");
+    } finally {
+      setDeleting(false);
+      setShowDeleteAll(false);
+    }
+  };
 
   const clearFilters = () => {
     setSearch("");
@@ -119,13 +137,24 @@ export default function ItineraryPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5 px-2 md:px-0">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Lịch trình</h1>
-        <button
-          onClick={() => setShowImport(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
-        >
-          <FileUp className="w-4 h-4" />
-          Import Excel
-        </button>
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <button
+              onClick={() => setShowDeleteAll(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Xóa tất cả
+            </button>
+          )}
+          <button
+            onClick={() => setShowImport(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            <FileUp className="w-4 h-4" />
+            Import Excel
+          </button>
+        </div>
       </div>
 
       {/* ── Filter bar ── */}
@@ -258,6 +287,17 @@ export default function ItineraryPage() {
       {showImport && (
         <ImportDialog tripId="sg-my-2026" onClose={() => setShowImport(false)} />
       )}
+
+      <ConfirmModal
+        isOpen={showDeleteAll}
+        title="Xóa toàn bộ lịch trình?"
+        message={`Sẽ xóa tất cả ${items.length} hoạt động. Không thể hoàn tác.`}
+        confirmText={deleting ? "Đang xóa..." : "Xóa tất cả"}
+        cancelText="Hủy"
+        variant="destructive"
+        onConfirm={handleDeleteAll}
+        onCancel={() => setShowDeleteAll(false)}
+      />
 
       {/* Empty state */}
       {Object.keys(groupedByDay).length === 0 && (

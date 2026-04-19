@@ -193,6 +193,17 @@ export async function deleteItineraryItem(itemId: string) {
   await deleteDoc(doc(db, "itinerary", itemId));
 }
 
+export async function deleteAllItineraryItems() {
+  const q = query(
+    collection(db, "itinerary"),
+    where("tripId", "==", TRIP_ID)
+  );
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+}
+
 export async function deleteVisitedPlace(placeId: string) {
   const docRef = doc(db, "visited_places", placeId);
   await deleteDoc(docRef);
