@@ -6,6 +6,7 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
+  deleteField,
   query,
   where,
   orderBy,
@@ -197,7 +198,7 @@ export async function updateTripRoles(tripId: string, email: string, role: "edit
   const tripRef = doc(db, "trips", tripId);
   const field = `roles.${email.replace(/\./g, "_")}`; // Firestore keys can't have dots
   if (role === null) {
-    await updateDoc(tripRef, { [field]: null });
+    await updateDoc(tripRef, { [field]: deleteField() });
   } else {
     await updateDoc(tripRef, { [field]: role });
   }
