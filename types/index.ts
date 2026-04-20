@@ -1,6 +1,7 @@
 export interface Trip {
   id: string;
   name: string;
+  countries: string[]; // e.g. ['sg','my']
   startDate: Date;
   endDate: Date;
   budget: {

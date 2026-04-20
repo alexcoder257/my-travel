@@ -1,22 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { VisitedPlace, Trip, ItineraryItem } from "@/types/index";
-import { subscribeToVisitedPlaces, getItinerary } from "@/lib/firestore";
+import { useMemo } from "react";
+import { Trip } from "@/types/index";
+import { useTripData } from "@/contexts/TripDataContext";
 
 export function useExpenses(trip: Trip | null) {
-  const [visitedPlaces, setVisitedPlaces] = useState<VisitedPlace[]>([]);
-  const [itinerary, setItinerary] = useState<ItineraryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToVisitedPlaces((data) => {
-      setVisitedPlaces(data);
-      setLoading(false);
-    });
-    getItinerary().then(setItinerary);
-    return () => unsubscribe();
-  }, []);
+  const { visitedPlaces, visitedLoading: loading, items: itinerary } = useTripData();
 
   const summary = useMemo(() => {
     if (!trip) return null;
@@ -28,8 +17,14 @@ export function useExpenses(trip: Trip | null) {
       .filter((i) => i.estimatedPrice.currency === "MYR")
       .reduce((s, i) => s + i.estimatedPrice.amount, 0);
 
-    const sum = (places: VisitedPlace[], field: "foodCost" | "transportCost", cur: string) =>
-      places.filter((vp) => vp[field]?.currency === cur).reduce((s, vp) => s + (vp[field]?.amount || 0), 0);
+    const sum = (
+      places: typeof visitedPlaces,
+      field: "foodCost" | "transportCost",
+      cur: string
+    ) =>
+      places
+        .filter((vp) => vp[field]?.currency === cur)
+        .reduce((s, vp) => s + (vp[field]?.amount || 0), 0);
 
     const foodSGD = sum(visitedPlaces, "foodCost", "SGD");
     const foodMYR = sum(visitedPlaces, "foodCost", "MYR");

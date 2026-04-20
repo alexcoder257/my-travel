@@ -12,7 +12,6 @@ import {
   onSnapshot,
   Timestamp,
   writeBatch,
-  DocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -33,6 +32,7 @@ export async function getOrCreateTrip(): Promise<Trip> {
     const data = tripSnap.data();
     return {
       ...(data as Trip),
+      countries: (data.countries as string[]) ?? ["sg", "my"],
       startDate: (data.startDate as Timestamp).toDate(),
       endDate: (data.endDate as Timestamp).toDate(),
       createdAt: (data.createdAt as Timestamp).toDate(),
@@ -42,6 +42,7 @@ export async function getOrCreateTrip(): Promise<Trip> {
   const newTrip: Trip = {
     id: TRIP_ID,
     name: "Singapore & Malaysia",
+    countries: ["sg", "my"],
     startDate: new Date("2026-04-29"),
     endDate: new Date("2026-05-04"),
     budget: {
@@ -111,7 +112,11 @@ export async function addItineraryItems(items: Omit<ItineraryItem, "id">[]) {
 
   items.forEach((item) => {
     const docRef = doc(collection(db, "itinerary"));
-    batch.set(docRef, { ...item, visited: false });
+    // Strip undefined values — Firestore rejects them
+    const data = Object.fromEntries(
+      Object.entries({ ...item, visited: false }).filter(([, v]) => v !== undefined)
+    );
+    batch.set(docRef, data);
   });
 
   await batch.commit();
@@ -182,9 +187,10 @@ export async function updateVisitedPlace(
   data: Partial<VisitedPlace>
 ) {
   const docRef = doc(db, "visited_places", placeId);
-  const updateData = { ...data };
-  if (data.visitedAt) {
-    updateData.visitedAt = Timestamp.fromDate(data.visitedAt) as any;
+  const { visitedAt, ...rest } = data;
+  const updateData: Record<string, unknown> = { ...rest };
+  if (visitedAt) {
+    updateData.visitedAt = Timestamp.fromDate(visitedAt);
   }
   await updateDoc(docRef, updateData);
 }
@@ -201,6 +207,24 @@ export async function deleteAllItineraryItems() {
   const snapshot = await getDocs(q);
   const batch = writeBatch(db);
   snapshot.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+}
+
+export async function sortDayByTime(day: number): Promise<void> {
+  const all = await getItinerary();
+  const dayItems = all.filter((i) => i.day === day);
+  const sorted = [...dayItems].sort((a, b) => {
+    const aTime = (a.time?.split("–")[0] ?? "").trim();
+    const bTime = (b.time?.split("–")[0] ?? "").trim();
+    if (!aTime && !bTime) return 0;
+    if (!aTime) return 1;
+    if (!bTime) return -1;
+    return aTime.localeCompare(bTime);
+  });
+  const batch = writeBatch(db);
+  sorted.forEach((item, idx) => {
+    batch.update(doc(db, "itinerary", item.id), { order: idx });
+  });
   await batch.commit();
 }
 

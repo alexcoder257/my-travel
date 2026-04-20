@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ItineraryItem } from "@/types/index";
-import { updateItineraryItem } from "@/lib/firestore";
+import { updateItineraryItem, sortDayByTime } from "@/lib/firestore";
 import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -67,17 +67,16 @@ export function EditItemModal({ item, onClose }: Props) {
       toast.error("Hoạt động và địa điểm không được để trống.");
       return;
     }
-    if (!form.startTime.trim() || !form.endTime.trim()) {
-      toast.error("Vui lòng nhập đủ giờ bắt đầu và kết thúc.");
-      return;
-    }
     setSaving(true);
     try {
-      const updateData: any = {
+      const s = form.startTime.trim();
+      const e = form.endTime.trim();
+      const timeStr = s && e ? `${s}–${e}` : s || e || "";
+      const updateData: Partial<ItineraryItem> = {
         activity: form.activity.trim(),
         location: form.location.trim(),
         date: form.date.trim(),
-        time: `${form.startTime.trim()}–${form.endTime.trim()}`,
+        time: timeStr,
         estimatedPrice: {
           amount: parseFloat(form.amount) || 0,
           currency: form.currency as ItineraryItem["estimatedPrice"]["currency"],
@@ -90,6 +89,7 @@ export function EditItemModal({ item, onClose }: Props) {
       }
       console.log("[DEBUG] updateItineraryItem:", item.id, updateData);
       await updateItineraryItem(item.id, updateData);
+      await sortDayByTime(item.day);
       toast.success("Đã cập nhật hoạt động.");
       onClose();
     } catch (err) {
@@ -183,38 +183,36 @@ export function EditItemModal({ item, onClose }: Props) {
             </div>
           </div>
 
-          {/* Date + Time (range) */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className={labelCls}>Ngày</label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={set("date")}
-                className={inputCls}
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Giờ bắt đầu</label>
-              <input
-                type="time"
-                value={form.startTime}
-                onChange={set("startTime")}
-                className={inputCls}
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Giờ kết thúc</label>
-              <input
-                type="time"
-                value={form.endTime}
-                onChange={set("endTime")}
-                className={inputCls}
-                autoComplete="off"
-              />
-            </div>
+          {/* Date + Time — each on its own row */}
+          <div>
+            <label className={labelCls}>Ngày</label>
+            <input
+              type="date"
+              value={form.date}
+              onChange={set("date")}
+              className={inputCls}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Giờ bắt đầu</label>
+            <input
+              type="time"
+              value={form.startTime}
+              onChange={set("startTime")}
+              className={inputCls}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Giờ kết thúc</label>
+            <input
+              type="time"
+              value={form.endTime}
+              onChange={set("endTime")}
+              className={inputCls}
+              autoComplete="off"
+            />
           </div>
 
           {/* Link Google Maps */}

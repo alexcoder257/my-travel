@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { TripDataProvider } from "@/contexts/TripDataContext";
+import { LanguageProvider } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/Toaster";
 import "./globals.css";
 
@@ -23,13 +25,17 @@ export default function RootLayout({
         className="min-h-full flex flex-col"
         style={{ background: "var(--surface-body)" }}
       >
-        <ToastProvider>
-          <main className="flex-1 pb-[calc(88px+env(safe-area-inset-bottom))]">
-            {children}
-          </main>
-          <Navbar />
-          <Toaster />
-        </ToastProvider>
+        <LanguageProvider>
+          <TripDataProvider>
+            <ToastProvider>
+              <main className="flex-1 pb-[calc(88px+env(safe-area-inset-bottom))]">
+                {children}
+              </main>
+              <Navbar />
+              <Toaster />
+            </ToastProvider>
+          </TripDataProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

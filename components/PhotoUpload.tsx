@@ -42,11 +42,12 @@ export function PhotoUpload({
       onPhotoUploaded(url);
       setPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error: any) {
+    } catch (error) {
       console.error("Upload failed:", error);
-      const msg = error?.code === "storage/unauthorized"
+      const err = error as { code?: string; message?: string };
+      const msg = err?.code === "storage/unauthorized"
         ? "Lỗi quyền truy cập Storage. Cần cập nhật Firebase Storage Rules."
-        : `Upload thất bại: ${error?.message || "Lỗi không xác định"}`;
+        : `Upload thất bại: ${err?.message || "Lỗi không xác định"}`;
       setUploadError(msg);
       setPreview(null);
     } finally {

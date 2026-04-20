@@ -4,7 +4,8 @@ import { useItinerary } from "@/hooks/useItinerary";
 import { ItineraryCard } from "@/components/ItineraryCard";
 import { ImportDialog } from "@/components/ImportDialog";
 import { FileUp, Search, X, Trash2, Plus, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { updateItineraryItem, deleteAllItineraryItems } from "@/lib/firestore";
 import { ItineraryItem } from "@/types/index";
@@ -12,6 +13,7 @@ import { CreateItemModal } from "@/components/CreateItemModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useToast } from "@/contexts/ToastContext";
 import { TripLoader } from "@/components/TripLoader";
+import { useTranslation } from "@/lib/i18n";
 
 type CategoryFilter = "all" | "food" | "place" | "transport" | "other";
 type StatusFilter = "all" | "visited" | "unvisited";
@@ -31,19 +33,20 @@ const PILL_IDLE =
   "bg-[var(--sand-100)] text-[var(--nature-800)] hover:bg-[var(--sand-200)]";
 
 export default function ItineraryPage() {
-  const { items: initialItems, loading, toggleVisited } = useItinerary();
-  const toast = useToast();
-  const [items, setItems] = useState(initialItems);
-  const [showDeleteAll, setShowDeleteAll] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { t } = useTranslation();
+  return (
+    <Suspense fallback={<TripLoader label={t("common.loading")} />}>
+      <ItineraryContent />
+    </Suspense>
+  );
+}
 
-  const scrollToId =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("scrollTo")
-      : null;
-  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const hasScrolledRef = useRef<string | null>(null);
+function ItineraryContent() {
+  const { items: initialItems, loading, toggleVisited } = useItinerary();
+  const searchParams = useSearchParams();
+  const toast = useToast();
+  const { t } = useTranslation();
+  const [items, setItems] = useState(initialItems);
 
   const [search, setSearch] = useState("");
   const [country, setCountry] = useState<CountryFilter>("all");
@@ -54,16 +57,39 @@ export default function ItineraryPage() {
   const [showImport, setShowImport] = useState(false);
   const [createModal, setCreateModal] = useState<null | { day: number; date: string; order: number }>(null);
 
-  useEffect(() => { setItems(initialItems); }, [initialItems]);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const scrollToId = searchParams.get("scrollTo");
+  const expandId = searchParams.get("expand");
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
-    if (scrollToId && cardRefs.current[scrollToId] && hasScrolledRef.current !== scrollToId) {
-      setTimeout(() => {
-        cardRefs.current[scrollToId]?.scrollIntoView({ behavior: "smooth", block: "center" });
-        hasScrolledRef.current = scrollToId;
-      }, 300);
+    setItems(initialItems);
+  }, [initialItems]);
+
+  useEffect(() => {
+    const expand = expandId;
+    if (!expand || !items.length) return;
+    const target = items.find((i) => i.id === expand);
+    if (!target) return;
+    const key = target.day.toString();
+    setFoldedDays((prev) => {
+      if (prev[key] === true) return { ...prev, [key]: false };
+      return prev;
+    });
+  }, [expandId, items]);
+
+  useEffect(() => {
+    const scroll = scrollToId;
+    if (scroll && cardRefs.current && cardRefs.current[scroll]) {
+      const timer = setTimeout(() => {
+        cardRefs.current[scroll]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 400);
+      return () => clearTimeout(timer);
     }
-  }, [scrollToId, items]);
+  }, [scrollToId, items, foldedDays]);
 
   const isFiltering = search.trim() !== "" || country !== "all" || day !== "all" || category !== "all" || status !== "all";
 
@@ -71,9 +97,9 @@ export default function ItineraryPage() {
     setDeleting(true);
     try {
       await deleteAllItineraryItems();
-      toast.success("Đã xóa toàn bộ lịch trình.");
+      toast.success(t("common.success"));
     } catch {
-      toast.error("Xóa thất bại, thử lại.");
+      toast.error(t("common.error"));
     } finally {
       setDeleting(false);
       setShowDeleteAll(false);
@@ -98,7 +124,7 @@ export default function ItineraryPage() {
       if (day !== "all" && item.day !== day) return false;
       if (country !== "all") {
         const c = getCountry(item);
-        if (c !== "both" && c !== country) return false;
+        if (c !== country) return false;
       }
       if (q) {
         const hay = `${item.activity} ${item.location} ${item.notes || ""}`.toLowerCase();
@@ -125,7 +151,7 @@ export default function ItineraryPage() {
   const visitedTotal = items.filter((i) => i.visited).length;
   const progress = items.length > 0 ? visitedTotal / items.length : 0;
 
-  if (loading) return <TripLoader label="Đang tải lịch trình…" />;
+  if (loading) return <TripLoader label={t("common.loading")} />;
 
   return (
     <div className="pb-6" style={{ background: "var(--surface-body)" }}>
@@ -137,11 +163,11 @@ export default function ItineraryPage() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-[26px] font-extrabold leading-tight" style={{ color: "var(--nature-900)" }}>
-              Lịch trình
+              {t("itinerary.title")}
             </h1>
             {items.length > 0 && (
               <p className="text-[12px] mt-0.5" style={{ color: "var(--surface-muted)" }}>
-                {visitedTotal}/{items.length} điểm đã ghé
+                {t("itinerary.visited_count", { visited: visitedTotal, total: items.length })}
               </p>
             )}
           </div>
@@ -149,7 +175,7 @@ export default function ItineraryPage() {
             {items.length > 0 && (
               <button
                 onClick={() => setShowDeleteAll(true)}
-                aria-label="Xóa tất cả"
+                aria-label={t("itinerary.delete_all")}
                 className="w-9 h-9 rounded-full grid place-items-center"
                 style={{ background: "rgba(177,69,82,0.1)", color: "var(--accent-berry)" }}
               >
@@ -162,7 +188,7 @@ export default function ItineraryPage() {
               style={{ background: "var(--nature-700)" }}
             >
               <FileUp className="w-3.5 h-3.5" />
-              Import
+              {t("itinerary.import")}
             </button>
           </div>
         </div>
@@ -187,7 +213,7 @@ export default function ItineraryPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm hoạt động, địa điểm…"
+              placeholder={t("itinerary.search_placeholder")}
               className="w-full pl-9 pr-9 py-2.5 rounded-full outline-none text-[13px]"
               style={{ background: "var(--sand-100)", color: "var(--nature-900)" }}
             />
@@ -204,7 +230,7 @@ export default function ItineraryPage() {
               background: filtersOpen || isFiltering ? "var(--nature-700)" : "var(--sand-100)",
               color: filtersOpen || isFiltering ? "#fff" : "var(--nature-800)",
             }}
-            aria-label="Mở bộ lọc"
+            aria-label={t("itinerary.filter")}
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
@@ -224,9 +250,9 @@ export default function ItineraryPage() {
               <div className="pt-3 space-y-2.5">
                 {/* Country */}
                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>Quốc gia</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>{t("itinerary.country")}</span>
                   {(["all", "sg", "my"] as CountryFilter[]).map((c) => {
-                    const label = c === "all" ? "Tất cả" : c === "sg" ? "🇸🇬 SG" : "🇲🇾 MY";
+                    const label = c === "all" ? t("itinerary.all") : c === "sg" ? "🇸🇬 SG" : "🇲🇾 MY";
                     return (
                       <button key={c} onClick={() => setCountry(c)}
                         className={`${PILL} ${country === c ? PILL_ACTIVE : PILL_IDLE}`}
@@ -239,9 +265,9 @@ export default function ItineraryPage() {
 
                 {/* Status */}
                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>Trạng thái</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>{t("itinerary.status")}</span>
                   {(["all", "visited", "unvisited"] as StatusFilter[]).map((s) => {
-                    const label = s === "all" ? "Tất cả" : s === "visited" ? "✓ Đã đến" : "○ Chưa đến";
+                    const label = s === "all" ? t("itinerary.all") : s === "visited" ? t("itinerary.visited") : t("itinerary.unvisited");
                     const activeBg = s === "visited" ? "var(--nature-600)" : s === "unvisited" ? "#e27e35" : "var(--nature-700)";
                     return (
                       <button key={s} onClick={() => setStatus(s)}
@@ -255,11 +281,11 @@ export default function ItineraryPage() {
 
                 {/* Days */}
                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>Ngày</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>{t("itinerary.day")}</span>
                   <button onClick={() => setDay("all")}
                     className={`${PILL} ${day === "all" ? PILL_ACTIVE : PILL_IDLE}`}
                     style={day === "all" ? { background: "var(--nature-700)" } : {}}>
-                    Tất cả
+                    {t("itinerary.all")}
                   </button>
                   {allDays.map((d) => (
                     <button key={d} onClick={() => setDay(d)}
@@ -272,8 +298,8 @@ export default function ItineraryPage() {
 
                 {/* Category */}
                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>Loại</span>
-                  {([ ["all","Tất cả"], ["food","🍜 Ăn"], ["place","📍 Điểm"], ["transport","🚌 Đi"], ["other","✦ Khác"] ] as [CategoryFilter,string][]).map(([c, label]) => (
+                  <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>{t("itinerary.category")}</span>
+                  {([ ["all",t("itinerary.all")], ["food","🍜 Ăn"], ["place","📍 Điểm"], ["transport","🚌 Đi"], ["other","✦ Khác"] ] as [CategoryFilter,string][]).map(([c, label]) => (
                     <button key={c} onClick={() => setCategory(c)}
                       className={`${PILL} ${category === c ? PILL_ACTIVE : PILL_IDLE}`}
                       style={category === c ? { background: "var(--nature-700)" } : {}}>
@@ -288,7 +314,7 @@ export default function ItineraryPage() {
                     <button onClick={clearFilters}
                       className="text-[12px] font-semibold inline-flex items-center gap-1"
                       style={{ color: "var(--accent-berry)" }}>
-                      <X className="w-3 h-3" /> Xóa filter
+                      <X className="w-3 h-3" /> {t("itinerary.clear_filters")}
                     </button>
                   </div>
                 )}
@@ -311,22 +337,22 @@ export default function ItineraryPage() {
             🗺️
           </div>
           <p className="text-[16px] font-semibold" style={{ color: "var(--nature-900)" }}>
-            {isFiltering ? "Không tìm thấy kết quả" : "Lịch trình trống"}
+            {isFiltering ? t("itinerary.no_results") : t("itinerary.empty")}
           </p>
           <p className="text-[13px]" style={{ color: "var(--surface-muted)" }}>
-            {isFiltering ? "Thử xoá bộ lọc" : "Import file Excel để bắt đầu chuyến đi"}
+            {isFiltering ? t("itinerary.try_remove_filters") : t("itinerary.import_excel")}
           </p>
           {isFiltering ? (
             <button onClick={clearFilters}
               className="px-5 py-2.5 rounded-full text-sm font-semibold text-white"
               style={{ background: "var(--nature-700)" }}>
-              Xóa filter
+              {t("itinerary.clear_filters")}
             </button>
           ) : (
             <button onClick={() => setShowImport(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white"
               style={{ background: "var(--nature-700)" }}>
-              <FileUp className="w-4 h-4" /> Import Excel
+              <FileUp className="w-4 h-4" /> {t("itinerary.import_excel")}
             </button>
           )}
         </motion.div>
@@ -370,7 +396,7 @@ export default function ItineraryPage() {
                   </div>
                   <div className="flex-1 text-left">
                     <p className="text-[14px] font-bold" style={{ color: "var(--nature-900)" }}>
-                      Ngày {d}
+                      {t("itinerary.day")} {d}
                     </p>
                     <p className="text-[11px]" style={{ color: "var(--surface-muted)" }}>
                       {firstItem.date} · {visitedInDay}/{dayItems.length} hoạt động
@@ -385,7 +411,7 @@ export default function ItineraryPage() {
                         color: "var(--nature-700)",
                       }}
                     >
-                      {isFolded ? "Mở" : "Thu"}
+                      {isFolded ? t("itinerary.open") : t("itinerary.fold")}
                     </span>
                   )}
                 </button>
@@ -425,6 +451,9 @@ export default function ItineraryPage() {
                             >
                               <ItineraryCard
                                 item={item}
+                                index={idx}
+                                defaultExpanded={expandId === item.id}
+                                highlighted={expandId === item.id}
                                 onToggleVisited={toggleVisited}
                                 onMoveUp={handleMoveUp}
                                 onMoveDown={handleMoveDown}
@@ -446,7 +475,7 @@ export default function ItineraryPage() {
                           }}
                         >
                           <Plus className="w-4 h-4" />
-                          Thêm hoạt động
+                          {t("itinerary.add_activity")}
                         </button>
                       </div>
                     </motion.div>
@@ -461,6 +490,7 @@ export default function ItineraryPage() {
             day={createModal.day}
             date={createModal.date}
             order={createModal.order}
+            existingItems={groupedByDay[createModal.day] ?? []}
             onClose={() => setCreateModal(null)}
           />
         )}
@@ -472,10 +502,10 @@ export default function ItineraryPage() {
 
       <ConfirmModal
         isOpen={showDeleteAll}
-        title="Xóa toàn bộ lịch trình?"
-        message={`Sẽ xóa tất cả ${items.length} hoạt động. Không thể hoàn tác.`}
-        confirmText={deleting ? "Đang xóa..." : "Xóa tất cả"}
-        cancelText="Hủy"
+        title={t("itinerary.delete_all_confirm")}
+        message={t("itinerary.delete_all_message", { count: items.length })}
+        confirmText={deleting ? t("common.loading") : t("itinerary.delete_all")}
+        cancelText={t("itinerary.delete_cancel")}
         variant="destructive"
         onConfirm={handleDeleteAll}
         onCancel={() => setShowDeleteAll(false)}

@@ -2,22 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Map, BookHeart } from "lucide-react";
-import { motion } from "framer-motion";
-
-const navItems = [
-  { href: "/", icon: Compass, label: "Khám phá" },
-  { href: "/itinerary", icon: Map, label: "Lịch trình" },
-  { href: "/memories", icon: BookHeart, label: "Nhật ký" },
-] as const;
+import { Compass, Map, BookHeart, Languages } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "@/lib/i18n";
+import { useState } from "react";
 
 export function Navbar() {
   const pathname = usePathname();
+  const { language, setLanguage, t } = useTranslation();
+
+  const navItems = [
+    { href: "/", icon: Compass, label: t("navbar.explore") },
+    { href: "/itinerary", icon: Map, label: t("navbar.itinerary") },
+    { href: "/memories", icon: BookHeart, label: t("navbar.journal") },
+  ];
+
+  const toggleLanguage = () => {
+    setLanguage(language === "vi" ? "en" : "vi");
+  };
 
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-[max(env(safe-area-inset-bottom),12px)]"
+      className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none pb-[max(env(safe-area-inset-bottom),12px)]"
     >
       <motion.div
         initial={{ y: 60, opacity: 0 }}
@@ -59,6 +66,18 @@ export function Navbar() {
             </Link>
           );
         })}
+
+        {/* Language Toggle next to memories */}
+        <button
+          onClick={toggleLanguage}
+          className="relative flex items-center justify-center w-9 h-9 rounded-full transition-all active:scale-90 ml-1"
+          style={{ background: "rgba(255,255,255,0.1)" }}
+          aria-label="Toggle language"
+        >
+          <span className="text-lg">
+            {language === "vi" ? "🇻🇳" : "🇺🇸"}
+          </span>
+        </button>
       </motion.div>
     </nav>
   );

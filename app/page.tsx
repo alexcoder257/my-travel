@@ -2,7 +2,7 @@
 
 import { useTrip } from "@/hooks/useTrip";
 import { useState, useMemo } from "react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useItinerary } from "@/hooks/useItinerary";
 import { useExpenses } from "@/hooks/useExpenses";
@@ -10,13 +10,11 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Pencil, Calendar, MapPinned } from "lucide-react";
 import { TripLoader } from "@/components/TripLoader";
+import { COUNTRIES, getHeroImage, buildTripName } from "@/lib/countries";
+import { useTranslation } from "@/lib/i18n";
 
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1600&q=80";
-// ↑ Marina Bay / Singapore skyline at blue hour (public Unsplash photo)
-
-function formatVN(d: Date) {
-  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+function formatVN(d: Date, lang: string) {
+  return d.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { day: "2-digit", month: "2-digit" });
 }
 
 function daysDiff(from: Date, to: Date) {
@@ -27,9 +25,10 @@ export default function HomePage() {
   const { trip, loading: tripLoading } = useTrip();
   const { items: itinerary, loading: itineraryLoading } = useItinerary();
   const { summary } = useExpenses(trip);
+  const { t, language } = useTranslation();
 
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState("");
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,19 +38,25 @@ export default function HomePage() {
   const progress = totalItems > 0 ? visitedCount / totalItems : 0;
   const nextActivity = useMemo(() => itinerary.find((i) => !i.visited), [itinerary]);
 
-  if (tripLoading || itineraryLoading || !trip || !summary) return <TripLoader />;
+  if (tripLoading || itineraryLoading || !trip || !summary) return <TripLoader label={t("common.loading")} />;
 
   const today = new Date();
   const daysToStart = daysDiff(today, trip.startDate);
   const tripLen = daysDiff(trip.startDate, trip.endDate) + 1;
   const dayBadge =
     daysToStart > 0
-      ? `Còn ${daysToStart} ngày`
+      ? t("home.days_to_start", { count: daysToStart })
       : daysToStart === 0
-      ? "Hôm nay khởi hành!"
+      ? t("home.departure_today")
       : daysToStart >= -tripLen
-      ? `Ngày ${Math.abs(daysToStart) + 1}/${tripLen}`
-      : "Đã kết thúc";
+      ? t("home.day_progress", { current: Math.abs(daysToStart) + 1, total: tripLen })
+      : t("home.trip_ended");
+
+  const heroImage = getHeroImage(trip.countries ?? []);
+  const heroFlags = (trip.countries ?? [])
+    .map((c) => COUNTRIES.find((x) => x.code === c)?.flag)
+    .filter(Boolean)
+    .join(" · ");
 
   const handleSave = async () => {
     if (!trip) return;
@@ -59,9 +64,10 @@ export default function HomePage() {
     try {
       const tripRef = doc(db, "trips", trip.id);
       await updateDoc(tripRef, {
-        name: title,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        countries: selectedCountries,
+        name: buildTripName(selectedCountries),
+        startDate: Timestamp.fromDate(new Date(startDate)),
+        endDate: Timestamp.fromDate(new Date(endDate)),
       });
       setEditing(false);
       window.location.reload();
@@ -71,11 +77,19 @@ export default function HomePage() {
   };
 
   const startEdit = () => {
-    setTitle(trip.name);
+    setSelectedCountries(trip.countries ?? []);
     setStartDate(trip.startDate.toISOString().slice(0, 10));
     setEndDate(trip.endDate.toISOString().slice(0, 10));
     setEditing(true);
   };
+
+  const toggleCountry = (code: string) => {
+    setSelectedCountries((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
+
+  const derivedName = buildTripName(selectedCountries);
 
   return (
     <div className="relative">
@@ -89,7 +103,7 @@ export default function HomePage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={HERO_IMAGE}
+            src={heroImage}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
@@ -110,14 +124,16 @@ export default function HomePage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="absolute top-[max(env(safe-area-inset-top),16px)] left-0 right-0 px-5 flex items-center justify-between"
         >
-          <span className="glass-panel inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[13px] font-semibold tracking-wide"
-            style={{ color: "var(--nature-900)" }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent-berry)" }} />
-            TRIP · LIVE
-          </span>
+          <Link href="/itinerary">
+            <span className="glass-panel inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[13px] font-semibold tracking-wide"
+              style={{ color: "var(--nature-900)" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent-berry)" }} />
+              {t("home.trip_live")}
+            </span>
+          </Link>
           <button
             onClick={startEdit}
-            aria-label="Sửa chuyến đi"
+            aria-label={t("home.edit_trip")}
             className="glass-panel w-10 h-10 rounded-full grid place-items-center active:scale-95 transition-transform"
           >
             <Pencil className="w-4 h-4" style={{ color: "var(--nature-900)" }} />
@@ -133,7 +149,7 @@ export default function HomePage() {
         >
           <p className="text-[15px] uppercase tracking-[0.16em] opacity-90 flex items-center gap-1.5 font-medium"
             style={{ textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}>
-            🇸🇬 · 🇲🇾 <span className="ml-1">South-East Asia</span>
+            {heroFlags || "🌏"} <span className="ml-1">{t("home.sea")}</span>
           </p>
           <h1 className="mt-2 text-[42px] leading-[1.02] font-extrabold tracking-tight"
             style={{ fontFamily: "var(--font-heading, inherit)", textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}>
@@ -141,17 +157,19 @@ export default function HomePage() {
           </h1>
           <div className="mt-3 flex items-center gap-2.5">
             <p className="text-white/80 text-[15px]">
-              {formatVN(trip.startDate)} – {formatVN(trip.endDate)} · {tripLen} ngày
+              {formatVN(trip.startDate, language)} – {formatVN(trip.endDate, language)} · {t("home.days", { count: tripLen })}
             </p>
-            <motion.span
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.55, type: "spring", stiffness: 260, damping: 22 }}
-              className="rounded-full px-3 py-1 text-[13px] font-bold shadow-[var(--shadow-sm)] whitespace-nowrap"
-              style={{ background: "var(--accent-leaf)", color: "var(--nature-900)" }}
-            >
-              {dayBadge}
-            </motion.span>
+            <Link href="/itinerary">
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.55, type: "spring", stiffness: 260, damping: 22 }}
+                className="rounded-full px-3 py-1 text-[13px] font-bold shadow-[var(--shadow-sm)] whitespace-nowrap cursor-pointer"
+                style={{ background: "var(--accent-leaf)", color: "var(--nature-900)" }}
+              >
+                {dayBadge}
+              </motion.span>
+            </Link>
           </div>
         </motion.div>
       </section>
@@ -172,13 +190,13 @@ export default function HomePage() {
               <div className="p-5 text-white">
                 <div className="flex items-center justify-between">
                   <span className="text-[13px] uppercase tracking-[0.18em] opacity-80 font-semibold">
-                    Điểm dừng tiếp theo
+                    {t("home.next_stop")}
                   </span>
                   <span
                     className="text-[13px] font-bold px-2.5 py-1 rounded-full"
                     style={{ background: "var(--accent-leaf)", color: "var(--nature-900)" }}
                   >
-                    Ngày {nextActivity.day}
+                    {t("itinerary.day")} {nextActivity.day}
                   </span>
                 </div>
                 <h3 className="mt-3 text-[24px] font-bold leading-tight">
@@ -197,7 +215,7 @@ export default function HomePage() {
                     className="inline-flex items-center gap-1 font-semibold text-[14px] px-3 py-1.5 rounded-full"
                     style={{ background: "rgba(255,255,255,0.12)" }}
                   >
-                    Mở lịch trình
+                    {t("home.open_itinerary")}
                     <ArrowUpRight className="w-4 h-4" />
                   </span>
                 </div>
@@ -211,7 +229,7 @@ export default function HomePage() {
             style={{ background: "var(--surface-card)" }}
           >
             <p className="text-[15px]" style={{ color: "var(--surface-muted)" }}>
-              Bạn đã ghé hết các địa điểm. Chuyến đi đỉnh thật! 🌿
+              {t("home.all_visited")}
             </p>
           </motion.div>
         )}
@@ -228,12 +246,12 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[13px] uppercase tracking-[0.16em]" style={{ color: "var(--surface-muted)" }}>
-              Hành trình
+              {t("home.journey")}
             </p>
             <p className="text-[28px] font-bold mt-1" style={{ color: "var(--nature-900)" }}>
               {visitedCount}
               <span className="text-[17px] font-medium ml-1" style={{ color: "var(--surface-muted)" }}>
-                /{totalItems} địa điểm
+                /{totalItems} {t("memories.visited_pod").toLowerCase()}
               </span>
             </p>
           </div>
@@ -251,13 +269,13 @@ export default function HomePage() {
       </motion.section>
 
       {/* ── SPENDING PODS ── */}
-      <section className="mt-5 px-5">
+      <section className="mt-5 px-5 pb-8">
         <p className="text-[13px] uppercase tracking-[0.16em] mb-3" style={{ color: "var(--surface-muted)" }}>
-          Chi tiêu
+          {t("home.spending")}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <SpendPod
-            label="🍜 Ăn & tham quan"
+            label={t("memories.food_pod")}
             sgd={summary.food.SGD}
             myr={summary.food.MYR}
             vnd={summary.food.VND}
@@ -265,7 +283,7 @@ export default function HomePage() {
             delay={0.05}
           />
           <SpendPod
-            label="🚗 Di chuyển"
+            label={t("memories.transport_pod")}
             sgd={summary.transport.SGD}
             myr={summary.transport.MYR}
             vnd={summary.transport.VND}
@@ -281,12 +299,12 @@ export default function HomePage() {
           className="mt-3 rounded-[24px] p-5 shadow-[var(--shadow-md)] text-white"
           style={{ background: "linear-gradient(135deg,var(--nature-700),var(--nature-900))" }}
         >
-          <p className="text-[13px] uppercase tracking-[0.16em] opacity-80 font-semibold">Tổng chi tiêu</p>
+          <p className="text-[13px] uppercase tracking-[0.16em] opacity-80 font-semibold">{t("home.total_spending")}</p>
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <Stat label="Dự toán" value={summary.estimated.VND} tone="soft" />
-            <Stat label="Thực tế" value={summary.actual.VND} tone="bright" />
+            <Stat label={t("home.budget")} value={summary.estimated.VND} tone="soft" />
+            <Stat label={t("home.actual")} value={summary.actual.VND} tone="bright" />
             <Stat
-              label="Tiết kiệm"
+              label={t("home.saving")}
               value={Math.abs(summary.estimated.VND - summary.actual.VND)}
               tone={summary.estimated.VND >= summary.actual.VND ? "good" : "bad"}
             />
@@ -294,7 +312,7 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      {/* Edit modal (inline overlay) */}
+      {/* ── EDIT MODAL ── */}
       {editing && (
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -310,36 +328,90 @@ export default function HomePage() {
             style={{ background: "var(--surface-card)" }}
           >
             <h3 className="text-lg font-bold" style={{ color: "var(--nature-900)" }}>
-              Sửa thông tin chuyến đi
+              {t("home.edit_title")}
             </h3>
-            <label className="block mt-4 text-sm font-medium" style={{ color: "var(--surface-muted)" }}>Tên chuyến đi</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={saving}
-              className="mt-1 w-full rounded-xl px-3 py-2.5 outline-none focus:ring-2"
-              style={{ background: "var(--sand-100)" }}
-            />
-            <div className="mt-3 grid grid-cols-2 gap-3">
+
+            {/* ── Country flag picker ── */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--surface-muted)" }}>
+                {t("itinerary.country")}
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {COUNTRIES.map((country) => {
+                  const selected = selectedCountries.includes(country.code);
+                  return (
+                    <button
+                      key={country.code}
+                      type="button"
+                      disabled={saving}
+                      onClick={() => toggleCountry(country.code)}
+                      className="flex flex-col items-center gap-1 rounded-[16px] py-2.5 px-1 transition-all active:scale-95"
+                      style={{
+                        background: selected ? "var(--nature-100)" : "var(--sand-100)",
+                        boxShadow: selected ? "0 0 0 2px var(--nature-500)" : "none",
+                      }}
+                    >
+                      <span className="text-[22px] leading-none">{country.flag}</span>
+                      <span className="text-[10px] font-semibold leading-tight text-center"
+                        style={{ color: selected ? "var(--nature-800)" : "var(--surface-muted)" }}>
+                        {country.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Derived name preview */}
+              {selectedCountries.length > 0 && (
+                <div className="mt-3 px-3 py-2 rounded-xl text-[13px] font-semibold"
+                  style={{ background: "var(--nature-100)", color: "var(--nature-800)" }}>
+                  ✈️ {derivedName}
+                </div>
+              )}
+            </div>
+
+            {/* ── Dates ── */}
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium" style={{ color: "var(--surface-muted)" }}>Bắt đầu</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={saving}
-                  className="mt-1 w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--sand-100)" }} />
+                <label className="block text-sm font-medium" style={{ color: "var(--surface-muted)" }}>{t("home.start_date")}</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={saving}
+                  className="mt-1 w-full rounded-xl px-3 py-2.5 outline-none text-base"
+                  style={{ background: "var(--sand-100)" }}
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium" style={{ color: "var(--surface-muted)" }}>Kết thúc</label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={saving}
-                  className="mt-1 w-full rounded-xl px-3 py-2.5 outline-none" style={{ background: "var(--sand-100)" }} />
+                <label className="block text-sm font-medium" style={{ color: "var(--surface-muted)" }}>{t("home.end_date")}</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled={saving}
+                  className="mt-1 w-full rounded-xl px-3 py-2.5 outline-none text-base"
+                  style={{ background: "var(--sand-100)" }}
+                />
               </div>
             </div>
+
             <div className="mt-5 flex justify-end gap-2">
-              <button disabled={saving} onClick={() => setEditing(false)}
+              <button
+                disabled={saving}
+                onClick={() => setEditing(false)}
                 className="px-4 py-2 rounded-full text-sm font-semibold"
-                style={{ color: "var(--surface-muted)" }}>Huỷ</button>
-              <button disabled={saving} onClick={handleSave}
-                className="px-5 py-2 rounded-full text-sm font-semibold text-white active:scale-[.98] transition"
-                style={{ background: "var(--nature-700)" }}>
-                {saving ? "Đang lưu…" : "Lưu"}
+                style={{ color: "var(--surface-muted)" }}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                disabled={saving || selectedCountries.length === 0}
+                onClick={handleSave}
+                className="px-5 py-2 rounded-full text-sm font-semibold text-white active:scale-[.98] transition disabled:opacity-50"
+                style={{ background: "var(--nature-700)" }}
+              >
+                {saving ? t("common.loading") : t("common.save")}
               </button>
             </div>
           </motion.div>

@@ -1,7 +1,6 @@
 // This script seeds the Firestore database with the itinerary data
 // Run: npx ts-node scripts/seed-itinerary.ts
 
-import { db } from "@/lib/firebase";
 import { addItineraryItems } from "@/lib/firestore";
 import { ItineraryItem } from "@/types/index";
 

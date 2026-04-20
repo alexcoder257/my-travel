@@ -2,19 +2,23 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useItinerary } from "@/hooks/useItinerary";
 import { useTrip } from "@/hooks/useTrip";
 import { useExpenses } from "@/hooks/useExpenses";
 import { TripLoader } from "@/components/TripLoader";
-import { NotebookPen, BookHeart, MapPin, Clock } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
+import { NotebookPen, BookHeart, MapPin, Clock, ArrowUpRight } from "lucide-react";
 
 const PILL =
   "shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-colors";
 
 export default function MemoriesPage() {
+  const router = useRouter();
   const { trip, loading: tripLoading } = useTrip();
   const { items: itinerary, loading: itineraryLoading } = useItinerary();
   const { visitedPlaces, loading: expensesLoading } = useExpenses(trip);
+  const { t } = useTranslation();
 
   const [filterDay, setFilterDay] = useState<string>("all");
   const [filterCountry, setFilterCountry] = useState<string>("all");
@@ -51,7 +55,7 @@ export default function MemoriesPage() {
   }, [visitedWithDetails, filterDay, filterCountry]);
 
   if (tripLoading || itineraryLoading || expensesLoading)
-    return <TripLoader label="Đang tải nhật ký…" />;
+    return <TripLoader label={t("common.loading")} />;
 
   const toVND = (sgd: number, myr: number) => {
     if (!trip) return 0;
@@ -86,10 +90,10 @@ export default function MemoriesPage() {
           </div>
           <div>
             <h1 className="text-[24px] font-extrabold leading-tight" style={{ color: "var(--nature-900)" }}>
-              Nhật ký
+              {t("memories.title")}
             </h1>
             <p className="text-[12px]" style={{ color: "var(--surface-muted)" }}>
-              {filtered.length} địa điểm đã ghé
+              {t("memories.visited_places", { count: filtered.length })}
             </p>
           </div>
         </div>
@@ -102,13 +106,13 @@ export default function MemoriesPage() {
           transition={{ duration: 0.4 }}
           className="mx-5 grid grid-cols-2 gap-3 mb-5"
         >
-          <StatPod emoji="📍" value={filtered.length.toString()} label="Địa điểm ghé"
+          <StatPod emoji="📍" value={filtered.length.toString()} label={t("memories.visited_pod")}
             bg="linear-gradient(135deg,var(--nature-100),var(--nature-200))" color="var(--nature-800)" />
-          <StatPod emoji="📝" value={withNotes.length.toString()} label="Ghi chú lưu"
+          <StatPod emoji="📝" value={withNotes.length.toString()} label={t("memories.notes_pod")}
             bg="linear-gradient(135deg,var(--sand-100),var(--sand-200))" color="var(--nature-800)" />
-          <StatPod emoji="🍜" value={`${(totalFood / 1000).toFixed(0)}K`} label="Ăn & tham quan"
+          <StatPod emoji="🍜" value={`${(totalFood / 1000).toFixed(0)}K`} label={t("memories.food_pod")}
             bg="linear-gradient(135deg,#fff3d6,#ffd98a)" color="#7a4a10" />
-          <StatPod emoji="🚗" value={`${(totalTransport / 1000).toFixed(0)}K`} label="Di chuyển"
+          <StatPod emoji="🚗" value={`${(totalTransport / 1000).toFixed(0)}K`} label={t("memories.transport_pod")}
             bg="linear-gradient(135deg,#e0ecff,#b8cdff)" color="#1a4080" />
         </motion.div>
       )}
@@ -116,8 +120,8 @@ export default function MemoriesPage() {
       {/* ── FILTERS ── */}
       <div className="px-5 mb-5 space-y-2">
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>Quốc gia</span>
-          {[["all","Tất cả"], ["SGD","🇸🇬 Singapore"], ["MYR","🇲🇾 Malaysia"]].map(([v, label]) => (
+          <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>{t("itinerary.country")}</span>
+          {[["all",t("itinerary.all")], ["SGD","🇸🇬 Singapore"], ["MYR","🇲🇾 Malaysia"]].map(([v, label]) => (
             <button key={v} onClick={() => setFilterCountry(v)}
               className={`${PILL} ${filterCountry === v ? "text-white" : "bg-[var(--sand-100)] text-[var(--nature-800)]"}`}
               style={filterCountry === v ? { background: "var(--nature-700)" } : {}}>
@@ -126,11 +130,11 @@ export default function MemoriesPage() {
           ))}
         </div>
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-0.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>Ngày</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide shrink-0" style={{ color: "var(--surface-muted)" }}>{t("itinerary.day")}</span>
           <button onClick={() => setFilterDay("all")}
             className={`${PILL} ${filterDay === "all" ? "text-white" : "bg-[var(--sand-100)] text-[var(--nature-800)]"}`}
             style={filterDay === "all" ? { background: "var(--nature-700)" } : {}}>
-            Tất cả
+            {t("itinerary.all")}
           </button>
           {uniqueDays.map((d) => (
             <button key={d} onClick={() => setFilterDay(d.toString())}
@@ -158,16 +162,16 @@ export default function MemoriesPage() {
           </motion.div>
           <div>
             <p className="text-[18px] font-bold" style={{ color: "var(--nature-900)" }}>
-              Nhật ký còn trống
+              {t("memories.empty_title")}
             </p>
             <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--surface-muted)" }}>
-              Tích vào những điểm bạn đã ghé trong<br />Lịch trình để ghi dấu hành trình
+              {t("memories.empty_desc")}
             </p>
           </div>
           <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-semibold"
             style={{ background: "var(--sand-100)", color: "var(--nature-700)" }}>
             <BookHeart className="w-4 h-4" />
-            Kỷ niệm của bạn sẽ xuất hiện tại đây
+            {t("memories.empty_footer")}
           </div>
         </motion.div>
       )}
@@ -192,8 +196,9 @@ export default function MemoriesPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}
                 transition={{ delay: Math.min(idx * 0.05, 0.3), duration: 0.45, ease: [0.22, 0.68, 0, 1] }}
-                className="rounded-[24px] overflow-hidden"
+                className="rounded-[24px] overflow-hidden cursor-pointer active:scale-[.98] transition-transform"
                 style={{ background: "var(--surface-card)", boxShadow: "var(--shadow-md)" }}
+                onClick={() => router.push(`/itinerary?scrollTo=${item.id}&expand=${item.id}`)}
               >
                 {/* Country accent bar */}
                 <div className="h-[3px] w-full" style={{
@@ -266,7 +271,7 @@ export default function MemoriesPage() {
                       <div className="flex items-center gap-1.5 text-[12px] font-semibold mb-2"
                         style={{ color: "var(--nature-600)" }}>
                         <NotebookPen className="w-3.5 h-3.5" />
-                        Ghi chú trải nghiệm
+                        {t("memories.experience_notes")}
                       </div>
                       <p className="text-[13px] leading-relaxed rounded-2xl p-3"
                         style={{ background: "var(--sand-100)", color: "var(--nature-800)" }}>
@@ -274,6 +279,12 @@ export default function MemoriesPage() {
                       </p>
                     </div>
                   )}
+
+                  {/* CTA */}
+                  <div className="mt-3 flex items-center justify-end gap-1 text-[11px] font-semibold"
+                    style={{ color: "var(--nature-600)" }}>
+                    {t("memories.view_in_itinerary")} <ArrowUpRight className="w-3 h-3" />
+                  </div>
                 </div>
               </motion.div>
             );
