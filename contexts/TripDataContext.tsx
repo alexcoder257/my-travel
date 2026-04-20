@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Trip, ItineraryItem, VisitedPlace } from "@/types/index";
 import { useAuth } from "./AuthContext";
 import {
-  getTrip,
+  subscribeToTrip,
   subscribeToItinerary,
   subscribeToVisitedPlaces,
   toggleVisited as firestoreToggleVisited,
@@ -44,7 +44,7 @@ export function TripDataProvider({ children }: { children: ReactNode }) {
   const userRole = user?.email ? trip?.roles?.[user.email.replace(/\./g, "_")] : null;
   const canEdit = isOwner || userRole === "editor";
 
-  // Trip fetch
+  // Trip real-time subscription
   useEffect(() => {
     if (!tripId) {
       setTripLoading(false);
@@ -52,12 +52,11 @@ export function TripDataProvider({ children }: { children: ReactNode }) {
     }
 
     setTripLoading(true);
-    getTrip(tripId)
-      .then((t) => {
-        setTrip(t);
-        setTripLoading(false);
-      })
-      .catch(() => setTripLoading(false));
+    const unsub = subscribeToTrip(tripId, (t) => {
+      setTrip(t);
+      setTripLoading(false);
+    });
+    return () => unsub();
   }, [tripId]);
 
   // Itinerary listener

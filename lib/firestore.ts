@@ -23,6 +23,25 @@ import {
 } from "@/types/index";
 
 // Trip operations
+export function subscribeToTrip(
+  tripId: string,
+  callback: (trip: Trip | null) => void
+) {
+  const tripRef = doc(db, "trips", tripId);
+  return onSnapshot(tripRef, (snap) => {
+    if (!snap.exists()) { callback(null); return; }
+    const data = snap.data();
+    callback({
+      ...(data as Trip),
+      id: snap.id,
+      countries: (data.countries as string[]) ?? ["sg", "my"],
+      startDate: (data.startDate as Timestamp).toDate(),
+      endDate: (data.endDate as Timestamp).toDate(),
+      createdAt: (data.createdAt as Timestamp).toDate(),
+    });
+  });
+}
+
 export async function getTrip(tripId: string): Promise<Trip | null> {
   const tripRef = doc(db, "trips", tripId);
   const tripSnap = await getDoc(tripRef);
@@ -50,21 +69,42 @@ export async function createTrip(trip: Trip): Promise<void> {
   });
 }
 
-export async function getTripsForUser(email: string, userId: string): Promise<Trip[]> {
-  // Query trips where ownerId is userId OR roles[email] exists
-  // Firestore doesn't support easy dynamic key query like resource.data.roles[email]
-  // Better approach for SaaS: Use a collection 'members' or a flat array
-  // For now, we'll query by ownerId and filter sharing in memory or use a separate collection
-
-  const q = query(collection(db, "trips"), where("ownerId", "==", userId));
-  const snap = await getDocs(q);
-  const trips = snap.docs.map(d => ({
-    ...d.data(),
+function mapTripDoc(d: { data: () => Record<string, unknown>; id: string }): Trip {
+  const data = d.data();
+  return {
+    ...(data as unknown as Trip),
     id: d.id,
-    startDate: (d.data().startDate as Timestamp).toDate(),
-    endDate: (d.data().endDate as Timestamp).toDate(),
-    createdAt: (d.data().createdAt as Timestamp).toDate(),
-  } as Trip));
+    startDate: (data.startDate as Timestamp).toDate(),
+    endDate: (data.endDate as Timestamp).toDate(),
+    createdAt: (data.createdAt as Timestamp).toDate(),
+  };
+}
+
+export async function getTripsForUser(email: string, userId: string): Promise<Trip[]> {
+  // Query 1: trips owned by user
+  const ownerQuery = query(collection(db, "trips"), where("ownerId", "==", userId));
+
+  // Query 2: trips where user has a role (viewer or editor)
+  const safeEmail = email.replace(/\./g, "_");
+  const sharedQuery = query(
+    collection(db, "trips"),
+    where(`roles.${safeEmail}`, "in", ["editor", "viewer"])
+  );
+
+  const [ownerSnap, sharedSnap] = await Promise.all([
+    getDocs(ownerQuery),
+    getDocs(sharedQuery),
+  ]);
+
+  const seen = new Set<string>();
+  const trips: Trip[] = [];
+
+  for (const d of [...ownerSnap.docs, ...sharedSnap.docs]) {
+    if (!seen.has(d.id)) {
+      seen.add(d.id);
+      trips.push(mapTripDoc(d as Parameters<typeof mapTripDoc>[0]));
+    }
+  }
 
   return trips;
 }
