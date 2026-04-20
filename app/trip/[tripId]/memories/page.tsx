@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useItinerary } from "@/hooks/useItinerary";
 import { useTrip } from "@/hooks/useTrip";
 import { useExpenses } from "@/hooks/useExpenses";
@@ -15,6 +15,8 @@ const PILL =
 
 export default function MemoriesPage() {
   const router = useRouter();
+  const params = useParams();
+  const tripId = params?.tripId as string;
   const { trip, loading: tripLoading } = useTrip();
   const { items: itinerary, loading: itineraryLoading } = useItinerary();
   const { visitedPlaces, loading: expensesLoading } = useExpenses(trip);
@@ -198,7 +200,7 @@ export default function MemoriesPage() {
                 transition={{ delay: Math.min(idx * 0.05, 0.3), duration: 0.45, ease: [0.22, 0.68, 0, 1] }}
                 className="rounded-[24px] overflow-hidden cursor-pointer active:scale-[.98] transition-transform"
                 style={{ background: "var(--surface-card)", boxShadow: "var(--shadow-md)" }}
-                onClick={() => router.push(`/itinerary?scrollTo=${item.id}&expand=${item.id}`)}
+                onClick={() => router.push(`/trip/${tripId}/itinerary?scrollTo=${item.id}&expand=${item.id}`)}
               >
                 {/* Country accent bar */}
                 <div className="h-[3px] w-full" style={{

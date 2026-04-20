@@ -4,16 +4,20 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/Toaster";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "My Travel Tracker",
-  description: "Theo dõi lịch trình, chi tiêu và địa điểm đã đến",
+  title: {
+    default: "Roamboo — Travel with love",
+    template: "%s · Roamboo",
+  },
+  description: "Plan trips, track spending, and relive memories — all in one place.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "MyTravel",
+    title: "Roamboo",
   },
 };
 
@@ -47,6 +51,7 @@ export default function RootLayout({
               </main>
               <Navbar />
               <Toaster />
+              <ServiceWorkerRegister />
             </ToastProvider>
           </LanguageProvider>
         </AuthProvider>

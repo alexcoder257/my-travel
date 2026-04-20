@@ -1,15 +1,16 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { getTripsForUser, createTrip } from "@/lib/firestore";
+import { getTripsForUser, createTrip, deleteTrip } from "@/lib/firestore";
 import { Trip } from "@/types/index";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, MapPin, Calendar, ChevronRight, LogOut } from "lucide-react";
+import { Plus, MapPin, Calendar, ChevronRight, LogOut, Trash2 } from "lucide-react";
 import { TripLoader } from "@/components/TripLoader";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { COUNTRIES, getHeroImage } from "@/lib/countries";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -27,12 +28,13 @@ export default function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmTrip, setConfirmTrip] = useState<Trip | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/login"); return; }
-
     getTripsForUser(user.email || "", user.uid)
       .then((data) => { setTrips(data); setLoading(false); })
       .catch(() => setLoading(false));
@@ -61,6 +63,18 @@ export default function TripsPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirmTrip) return;
+    setDeletingId(confirmTrip.id);
+    try {
+      await deleteTrip(confirmTrip.id);
+      setTrips((prev) => prev.filter((t) => t.id !== confirmTrip.id));
+    } finally {
+      setDeletingId(null);
+      setConfirmTrip(null);
+    }
+  };
+
   if (authLoading || loading) return <TripLoader label="Đang tải..." />;
 
   const avatar = user?.photoURL;
@@ -74,36 +88,43 @@ export default function TripsPage() {
         style={{ background: "var(--surface-body)" }}
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-            ) : (
-              <div
-                className="w-10 h-10 rounded-full grid place-items-center text-white font-bold text-[15px]"
-                style={{ background: "var(--nature-600)" }}
-              >
-                {displayName[0].toUpperCase()}
-              </div>
-            )}
-            <div>
-              <p className="text-[11px] font-medium" style={{ color: "var(--surface-muted)" }}>
-                Xin chào 👋
-              </p>
-              <p className="text-[15px] font-bold leading-tight" style={{ color: "var(--nature-900)" }}>
-                {displayName}
-              </p>
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-fit h-fit rounded-full flex items-center justify-center overflow-hidden"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Roamboo" className="w-26 h-26 object-contain" />
             </div>
           </div>
 
-          <button
-            onClick={logout}
-            className="w-9 h-9 rounded-full grid place-items-center transition-colors"
-            style={{ background: "var(--sand-100)", color: "var(--surface-muted)" }}
-            aria-label="Đăng xuất"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {/* User + Logout */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatar} alt="" className="w-7 h-7 rounded-full object-cover" />
+              ) : (
+                <div
+                  className="w-7 h-7 rounded-full grid place-items-center text-white font-bold text-[12px]"
+                  style={{ background: "var(--nature-600)" }}
+                >
+                  {displayName[0].toUpperCase()}
+                </div>
+              )}
+              <span className="text-[13px] font-semibold" style={{ color: "var(--nature-900)" }}>
+                {displayName}
+              </span>
+            </div>
+            <button
+              onClick={logout}
+              className="w-8 h-8 rounded-full grid place-items-center"
+              style={{ background: "var(--sand-100)", color: "var(--surface-muted)" }}
+              aria-label="Đăng xuất"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         <h1
@@ -139,8 +160,7 @@ export default function TripsPage() {
           trips.map((trip, i) => {
             const flag = getTripFlag(trip.countries);
             const hero = getHeroImage(trip.countries);
-            const daysLeft = Math.ceil((trip.endDate.getTime() - Date.now()) / 86400000);
-            const isOngoing = daysLeft >= 0 && Date.now() >= trip.startDate.getTime();
+            const isOngoing = Date.now() >= trip.startDate.getTime() && Date.now() <= trip.endDate.getTime();
             const isUpcoming = Date.now() < trip.startDate.getTime();
 
             return (
@@ -149,6 +169,7 @@ export default function TripsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07, duration: 0.4, ease: [0.22, 0.68, 0, 1] }}
+                className="relative"
               >
                 <Link
                   href={`/trip/${trip.id}`}
@@ -158,11 +179,7 @@ export default function TripsPage() {
                   {/* Thumbnail */}
                   <div className="relative h-32 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={hero}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
+                    <img src={hero} alt="" className="absolute inset-0 w-full h-full object-cover" />
                     <div
                       className="absolute inset-0"
                       style={{ background: "linear-gradient(180deg,transparent 20%,rgba(12,23,12,0.55) 100%)" }}
@@ -189,8 +206,8 @@ export default function TripsPage() {
                         </span>
                       )}
                     </div>
-                    {/* Flag + name overlay */}
-                    <div className="absolute bottom-3 left-3 text-white">
+                    {/* Flag */}
+                    <div className="absolute bottom-3 left-3">
                       <p className="text-[18px] leading-none">{flag || "🌏"}</p>
                     </div>
                   </div>
@@ -215,6 +232,17 @@ export default function TripsPage() {
                     <ChevronRight className="w-5 h-5 flex-shrink-0 ml-2" style={{ color: "var(--sand-400)" }} />
                   </div>
                 </Link>
+
+                {/* Nút xóa — nằm ngoài Link để không trigger navigation */}
+                <button
+                  onClick={(e) => { e.preventDefault(); setConfirmTrip(trip); }}
+                  disabled={deletingId === trip.id}
+                  className="absolute top-3 left-3 w-8 h-8 rounded-full grid place-items-center shadow-md transition-opacity disabled:opacity-50"
+                  style={{ background: "rgba(177,69,82,0.85)" }}
+                  aria-label="Xóa chuyến đi"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                </button>
               </motion.div>
             );
           })
@@ -236,6 +264,18 @@ export default function TripsPage() {
           {creating ? "Đang tạo..." : "Tạo chuyến đi mới"}
         </motion.button>
       </div>
+
+      {/* ── CONFIRM DELETE MODAL ── */}
+      <ConfirmModal
+        isOpen={!!confirmTrip}
+        title="Xóa chuyến đi?"
+        message={`Bạn có chắc muốn xóa "${confirmTrip?.name}"? Toàn bộ lịch trình và dữ liệu sẽ bị xóa vĩnh viễn.`}
+        confirmText={deletingId ? "Đang xóa..." : "Xóa"}
+        cancelText="Hủy"
+        variant="destructive"
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmTrip(null)}
+      />
     </div>
   );
 }

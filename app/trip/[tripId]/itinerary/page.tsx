@@ -102,7 +102,7 @@ function ItineraryContent() {
   const handleDeleteAll = async () => {
     setDeleting(true);
     try {
-      await deleteAllItineraryItems();
+      await deleteAllItineraryItems(tripId);
       toast.success(t("common.success"));
     } catch {
       toast.error(t("common.error"));
