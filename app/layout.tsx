@@ -1,14 +1,28 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Navbar } from "@/components/Navbar";
 import { ToastProvider } from "@/contexts/ToastContext";
-import { TripDataProvider } from "@/contexts/TripDataContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/Toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lịch trình - Singapore & Malaysia",
+  title: "My Travel Tracker",
   description: "Theo dõi lịch trình, chi tiêu và địa điểm đã đến",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MyTravel",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#365d2f",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -25,8 +39,8 @@ export default function RootLayout({
         className="min-h-full flex flex-col"
         style={{ background: "var(--surface-body)" }}
       >
-        <LanguageProvider>
-          <TripDataProvider>
+        <AuthProvider>
+          <LanguageProvider>
             <ToastProvider>
               <main className="flex-1 pb-[calc(88px+env(safe-area-inset-bottom))]">
                 {children}
@@ -34,8 +48,8 @@ export default function RootLayout({
               <Navbar />
               <Toaster />
             </ToastProvider>
-          </TripDataProvider>
-        </LanguageProvider>
+          </LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );

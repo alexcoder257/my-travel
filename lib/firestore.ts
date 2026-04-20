@@ -21,11 +21,9 @@ import {
   Expense,
 } from "@/types/index";
 
-const TRIP_ID = "sg-my-2026";
-
 // Trip operations
-export async function getOrCreateTrip(): Promise<Trip> {
-  const tripRef = doc(db, "trips", TRIP_ID);
+export async function getTrip(tripId: string): Promise<Trip | null> {
+  const tripRef = doc(db, "trips", tripId);
   const tripSnap = await getDoc(tripRef);
 
   if (tripSnap.exists()) {
@@ -38,59 +36,46 @@ export async function getOrCreateTrip(): Promise<Trip> {
       createdAt: (data.createdAt as Timestamp).toDate(),
     };
   }
+  return null;
+}
 
-  const newTrip: Trip = {
-    id: TRIP_ID,
-    name: "Singapore & Malaysia",
-    countries: ["sg", "my"],
-    startDate: new Date("2026-04-29"),
-    endDate: new Date("2026-05-04"),
-    budget: {
-      SGD: 282,
-      MYR: 1006,
-    },
-    exchangeRates: {
-      SGD: 19000,
-      MYR: 5500,
-    },
-    createdAt: new Date(),
-  };
-
+export async function createTrip(trip: Trip): Promise<void> {
+  const tripRef = doc(db, "trips", trip.id);
   await setDoc(tripRef, {
-    ...newTrip,
-    createdAt: Timestamp.fromDate(newTrip.createdAt),
-    startDate: Timestamp.fromDate(newTrip.startDate),
-    endDate: Timestamp.fromDate(newTrip.endDate),
+    ...trip,
+    createdAt: Timestamp.fromDate(trip.createdAt),
+    startDate: Timestamp.fromDate(trip.startDate),
+    endDate: Timestamp.fromDate(trip.endDate),
   });
+}
 
-  return newTrip;
+export async function getTripsForUser(email: string, userId: string): Promise<Trip[]> {
+  // Query trips where ownerId is userId OR roles[email] exists
+  // Firestore doesn't support easy dynamic key query like resource.data.roles[email]
+  // Better approach for SaaS: Use a collection 'members' or a flat array
+  // For now, we'll query by ownerId and filter sharing in memory or use a separate collection
+
+  const q = query(collection(db, "trips"), where("ownerId", "==", userId));
+  const snap = await getDocs(q);
+  const trips = snap.docs.map(d => ({
+    ...d.data(),
+    id: d.id,
+    startDate: (d.data().startDate as Timestamp).toDate(),
+    endDate: (d.data().endDate as Timestamp).toDate(),
+    createdAt: (d.data().createdAt as Timestamp).toDate(),
+  } as Trip));
+
+  return trips;
 }
 
 // Itinerary operations
-export async function getItinerary(): Promise<ItineraryItem[]> {
-  const q = query(
-    collection(db, "itinerary"),
-    where("tripId", "==", TRIP_ID)
-  );
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs
-    .map((doc) => ({
-      ...(doc.data() as ItineraryItem),
-      id: doc.id,
-    }))
-    .sort((a, b) => {
-      if (a.day !== b.day) return a.day - b.day;
-      return a.order - b.order;
-    });
-}
-
 export function subscribeToItinerary(
+  tripId: string,
   callback: (items: ItineraryItem[]) => void
 ) {
   const q = query(
     collection(db, "itinerary"),
-    where("tripId", "==", TRIP_ID)
+    where("tripId", "==", tripId)
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -107,14 +92,13 @@ export function subscribeToItinerary(
   });
 }
 
-export async function addItineraryItems(items: Omit<ItineraryItem, "id">[]) {
+export async function addItineraryItems(tripId: string, items: Omit<ItineraryItem, "id" | "tripId">[]) {
   const batch = writeBatch(db);
 
   items.forEach((item) => {
     const docRef = doc(collection(db, "itinerary"));
-    // Strip undefined values — Firestore rejects them
     const data = Object.fromEntries(
-      Object.entries({ ...item, visited: false }).filter(([, v]) => v !== undefined)
+      Object.entries({ ...item, tripId, visited: false }).filter(([, v]) => v !== undefined)
     );
     batch.set(docRef, data);
   });
@@ -127,35 +111,14 @@ export async function toggleVisited(itemId: string, visited: boolean) {
   await updateDoc(itemRef, { visited });
 }
 
-export async function updateItineraryItem(
-  itemId: string,
-  data: Partial<ItineraryItem>
-) {
-  const itemRef = doc(db, "itinerary", itemId);
-  await updateDoc(itemRef, data);
-}
-
 // Visited places operations
-export async function getVisitedPlaces(): Promise<VisitedPlace[]> {
-  const q = query(
-    collection(db, "visited_places"),
-    where("tripId", "==", TRIP_ID)
-  );
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    ...(doc.data() as Omit<VisitedPlace, "id" | "visitedAt">),
-    id: doc.id,
-    visitedAt: (doc.data().visitedAt as Timestamp).toDate(),
-  }));
-}
-
 export function subscribeToVisitedPlaces(
+  tripId: string,
   callback: (places: VisitedPlace[]) => void
 ) {
   const q = query(
     collection(db, "visited_places"),
-    where("tripId", "==", TRIP_ID)
+    where("tripId", "==", tripId)
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -169,90 +132,28 @@ export function subscribeToVisitedPlaces(
 }
 
 export async function addVisitedPlace(
+  tripId: string,
   itineraryItemId: string,
   data: Omit<VisitedPlace, "id" | "tripId" | "itineraryItemId">
 ) {
   const docRef = doc(collection(db, "visited_places"));
   await setDoc(docRef, {
     ...data,
-    tripId: TRIP_ID,
+    tripId,
     itineraryItemId,
     visitedAt: Timestamp.fromDate(data.visitedAt),
   });
   return docRef.id;
 }
 
-export async function updateVisitedPlace(
-  placeId: string,
-  data: Partial<VisitedPlace>
+// Expenses operations
+export function subscribeToExpenses(
+  tripId: string,
+  callback: (expenses: Expense[]) => void
 ) {
-  const docRef = doc(db, "visited_places", placeId);
-  const { visitedAt, ...rest } = data;
-  const updateData: Record<string, unknown> = { ...rest };
-  if (visitedAt) {
-    updateData.visitedAt = Timestamp.fromDate(visitedAt);
-  }
-  await updateDoc(docRef, updateData);
-}
-
-export async function deleteItineraryItem(itemId: string) {
-  await deleteDoc(doc(db, "itinerary", itemId));
-}
-
-export async function deleteAllItineraryItems() {
-  const q = query(
-    collection(db, "itinerary"),
-    where("tripId", "==", TRIP_ID)
-  );
-  const snapshot = await getDocs(q);
-  const batch = writeBatch(db);
-  snapshot.docs.forEach((d) => batch.delete(d.ref));
-  await batch.commit();
-}
-
-export async function sortDayByTime(day: number): Promise<void> {
-  const all = await getItinerary();
-  const dayItems = all.filter((i) => i.day === day);
-  const sorted = [...dayItems].sort((a, b) => {
-    const aTime = (a.time?.split("–")[0] ?? "").trim();
-    const bTime = (b.time?.split("–")[0] ?? "").trim();
-    if (!aTime && !bTime) return 0;
-    if (!aTime) return 1;
-    if (!bTime) return -1;
-    return aTime.localeCompare(bTime);
-  });
-  const batch = writeBatch(db);
-  sorted.forEach((item, idx) => {
-    batch.update(doc(db, "itinerary", item.id), { order: idx });
-  });
-  await batch.commit();
-}
-
-export async function deleteVisitedPlace(placeId: string) {
-  const docRef = doc(db, "visited_places", placeId);
-  await deleteDoc(docRef);
-}
-
-// Expense operations
-export async function getExpenses(): Promise<Expense[]> {
   const q = query(
     collection(db, "expenses"),
-    where("tripId", "==", TRIP_ID),
-    orderBy("date", "desc")
-  );
-
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    ...(doc.data() as Omit<Expense, "id" | "date">),
-    id: doc.id,
-    date: (doc.data().date as Timestamp).toDate(),
-  }));
-}
-
-export function subscribeToExpenses(callback: (expenses: Expense[]) => void) {
-  const q = query(
-    collection(db, "expenses"),
-    where("tripId", "==", TRIP_ID),
+    where("tripId", "==", tripId),
     orderBy("date", "desc")
   );
 
@@ -267,15 +168,34 @@ export function subscribeToExpenses(callback: (expenses: Expense[]) => void) {
 }
 
 export async function addExpense(
+  tripId: string,
   data: Omit<Expense, "id" | "tripId">
 ) {
   const docRef = doc(collection(db, "expenses"));
   await setDoc(docRef, {
     ...data,
-    tripId: TRIP_ID,
+    tripId,
     date: Timestamp.fromDate(data.date),
   });
   return docRef.id;
+}
+
+export async function updateTripRoles(tripId: string, email: string, role: "editor" | "viewer" | null) {
+  const tripRef = doc(db, "trips", tripId);
+  const field = `roles.${email.replace(/\./g, "_")}`; // Firestore keys can't have dots
+  if (role === null) {
+    await updateDoc(tripRef, { [field]: null });
+  } else {
+    await updateDoc(tripRef, { [field]: role });
+  }
+}
+
+export async function deleteItineraryItem(itemId: string) {
+  await deleteDoc(doc(db, "itinerary", itemId));
+}
+
+export async function deleteVisitedPlace(placeId: string) {
+  await deleteDoc(doc(db, "visited_places", placeId));
 }
 
 export async function getVisitedPlaceByItemId(
@@ -293,26 +213,4 @@ export async function getVisitedPlaceByItemId(
     id: doc.id,
     visitedAt: (doc.data().visitedAt as Timestamp).toDate(),
   };
-}
-
-export function subscribeToVisitedPlaceByItemId(
-  itineraryItemId: string,
-  callback: (place: VisitedPlace | null) => void
-) {
-  const q = query(
-    collection(db, "visited_places"),
-    where("itineraryItemId", "==", itineraryItemId)
-  );
-  return onSnapshot(q, (snapshot) => {
-    if (snapshot.empty) {
-      callback(null);
-    } else {
-      const doc = snapshot.docs[0];
-      callback({
-        ...(doc.data() as Omit<VisitedPlace, "id" | "visitedAt">),
-        id: doc.id,
-        visitedAt: (doc.data().visitedAt as Timestamp).toDate(),
-      });
-    }
-  });
 }

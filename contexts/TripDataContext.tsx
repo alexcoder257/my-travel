@@ -1,9 +1,11 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useParams } from "next/navigation";
 import { Trip, ItineraryItem, VisitedPlace } from "@/types/index";
+import { useAuth } from "./AuthContext";
 import {
-  getOrCreateTrip,
+  getTrip,
   subscribeToItinerary,
   subscribeToVisitedPlaces,
   toggleVisited as firestoreToggleVisited,
@@ -17,15 +19,17 @@ interface TripDataContextValue {
   visitedPlaces: VisitedPlace[];
   visitedLoading: boolean;
   toggleVisited: (itemId: string, visited: boolean) => Promise<void>;
+  canEdit: boolean;
+  isOwner: boolean;
 }
 
 const TripDataContext = createContext<TripDataContextValue | null>(null);
 
-/**
- * Single source of truth for all Firestore real-time data.
- * Mounted once at root layout — listeners never re-open on tab switches.
- */
 export function TripDataProvider({ children }: { children: ReactNode }) {
+  const params = useParams();
+  const tripId = params?.tripId as string;
+  const { user } = useAuth();
+
   const [trip, setTrip] = useState<Trip | null>(null);
   const [tripLoading, setTripLoading] = useState(true);
 
@@ -35,32 +39,49 @@ export function TripDataProvider({ children }: { children: ReactNode }) {
   const [visitedPlaces, setVisitedPlaces] = useState<VisitedPlace[]>([]);
   const [visitedLoading, setVisitedLoading] = useState(true);
 
-  // One-time trip fetch
-  useEffect(() => {
-    getOrCreateTrip()
-      .then((t) => { setTrip(t); setTripLoading(false); })
-      .catch(() => setTripLoading(false));
-  }, []);
+  // Determine permissions
+  const isOwner = user ? trip?.ownerId === user.uid : false;
+  const userRole = user?.email ? trip?.roles?.[user.email.replace(/\./g, "_")] : null;
+  const canEdit = isOwner || userRole === "editor";
 
-  // Single persistent itinerary listener (replaces per-page subscriptions)
+  // Trip fetch
   useEffect(() => {
-    const unsub = subscribeToItinerary((data) => {
+    if (!tripId) {
+      setTripLoading(false);
+      return;
+    }
+
+    setTripLoading(true);
+    getTrip(tripId)
+      .then((t) => {
+        setTrip(t);
+        setTripLoading(false);
+      })
+      .catch(() => setTripLoading(false));
+  }, [tripId]);
+
+  // Itinerary listener
+  useEffect(() => {
+    if (!tripId) return;
+    const unsub = subscribeToItinerary(tripId, (data) => {
       setItems(data);
       setItineraryLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [tripId]);
 
-  // Single persistent visited-places listener (replaces 68 per-card subscriptions)
+  // Visited-places listener
   useEffect(() => {
-    const unsub = subscribeToVisitedPlaces((data) => {
+    if (!tripId) return;
+    const unsub = subscribeToVisitedPlaces(tripId, (data) => {
       setVisitedPlaces(data);
       setVisitedLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [tripId]);
 
   const handleToggleVisited = async (itemId: string, visited: boolean) => {
+    if (!canEdit) return;
     await firestoreToggleVisited(itemId, visited);
   };
 
@@ -74,6 +95,8 @@ export function TripDataProvider({ children }: { children: ReactNode }) {
         visitedPlaces,
         visitedLoading,
         toggleVisited: handleToggleVisited,
+        canEdit,
+        isOwner,
       }}
     >
       {children}

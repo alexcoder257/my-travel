@@ -3,7 +3,8 @@
 import { useItinerary } from "@/hooks/useItinerary";
 import { ItineraryCard } from "@/components/ItineraryCard";
 import { ImportDialog } from "@/components/ImportDialog";
-import { FileUp, Search, X, Trash2, Plus, SlidersHorizontal } from "lucide-react";
+import { ShareModal } from "@/components/ShareModal";
+import { FileUp, Search, X, Trash2, Plus, SlidersHorizontal, Users } from "lucide-react";
 import { useMemo, useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +15,8 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { useToast } from "@/contexts/ToastContext";
 import { TripLoader } from "@/components/TripLoader";
 import { useTranslation } from "@/lib/i18n";
+import { useTripData } from "@/contexts/TripDataContext";
+import { useParams } from "next/navigation";
 
 type CategoryFilter = "all" | "food" | "place" | "transport" | "other";
 type StatusFilter = "all" | "visited" | "unvisited";
@@ -42,7 +45,9 @@ export default function ItineraryPage() {
 }
 
 function ItineraryContent() {
-  const { items: initialItems, loading, toggleVisited } = useItinerary();
+  const { items: initialItems, loading, toggleVisited, canEdit, isOwner, trip } = useTripData();
+  const params = useParams();
+  const tripId = params?.tripId as string;
   const searchParams = useSearchParams();
   const toast = useToast();
   const { t } = useTranslation();
@@ -55,6 +60,7 @@ function ItineraryContent() {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [foldedDays, setFoldedDays] = useState<Record<string, boolean>>({});
   const [showImport, setShowImport] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [createModal, setCreateModal] = useState<null | { day: number; date: string; order: number }>(null);
 
   const [showDeleteAll, setShowDeleteAll] = useState(false);
@@ -172,7 +178,16 @@ function ItineraryContent() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {items.length > 0 && (
+            {isOwner && (
+              <button
+                onClick={() => setShowShare(true)}
+                className="w-9 h-9 rounded-full grid place-items-center transition-colors bg-blue-50 text-blue-600 border border-blue-100"
+                aria-label="Chia sẻ"
+              >
+                <Users className="w-4 h-4" />
+              </button>
+            )}
+            {canEdit && items.length > 0 && (
               <button
                 onClick={() => setShowDeleteAll(true)}
                 aria-label={t("itinerary.delete_all")}
@@ -182,14 +197,16 @@ function ItineraryContent() {
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
-            <button
-              onClick={() => setShowImport(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold text-white"
-              style={{ background: "var(--nature-700)" }}
-            >
-              <FileUp className="w-3.5 h-3.5" />
-              {t("itinerary.import")}
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => setShowImport(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold text-white"
+                style={{ background: "var(--nature-700)" }}
+              >
+                <FileUp className="w-3.5 h-3.5" />
+                {t("itinerary.import")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -463,20 +480,22 @@ function ItineraryContent() {
                         })}
 
                         {/* Add activity */}
-                        <button
-                          onClick={() =>
-                            setCreateModal({ day: Number(d), date: firstItem.date, order: dayItems.length })
-                          }
-                          className="w-full flex items-center justify-center gap-2 py-3 rounded-[20px] text-[13px] font-semibold transition-colors"
-                          style={{
-                            background: "var(--sand-100)",
-                            color: "var(--nature-700)",
-                            border: "1.5px dashed var(--sand-400)",
-                          }}
-                        >
-                          <Plus className="w-4 h-4" />
-                          {t("itinerary.add_activity")}
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() =>
+                              setCreateModal({ day: Number(d), date: firstItem.date, order: dayItems.length })
+                            }
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-[20px] text-[13px] font-semibold transition-colors"
+                            style={{
+                              background: "var(--sand-100)",
+                              color: "var(--nature-700)",
+                              border: "1.5px dashed var(--sand-400)",
+                            }}
+                          >
+                            <Plus className="w-4 h-4" />
+                            {t("itinerary.add_activity")}
+                          </button>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -497,7 +516,11 @@ function ItineraryContent() {
       </div>
 
       {showImport && (
-        <ImportDialog tripId="sg-my-2026" onClose={() => setShowImport(false)} />
+        <ImportDialog tripId={tripId} onClose={() => setShowImport(false)} />
+      )}
+
+      {showShare && trip && (
+        <ShareModal trip={trip} onClose={() => setShowShare(false)} />
       )}
 
       <ConfirmModal

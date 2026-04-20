@@ -1,25 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Compass, Map, BookHeart, Languages } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { usePathname, useParams } from "next/navigation";
+import { Map, BookHeart, Compass, Home } from "lucide-react";
+import { motion } from "framer-motion";
 import { useTranslation } from "@/lib/i18n";
-import { useState } from "react";
 
 export function Navbar() {
   const pathname = usePathname();
+  const params = useParams();
+  const tripId = params?.tripId as string | undefined;
   const { language, setLanguage, t } = useTranslation();
 
-  const navItems = [
-    { href: "/", icon: Compass, label: t("navbar.explore") },
-    { href: "/itinerary", icon: Map, label: t("navbar.itinerary") },
-    { href: "/memories", icon: BookHeart, label: t("navbar.journal") },
-  ];
+  // Ẩn Navbar ở trang Login
+  if (pathname === "/login") return null;
 
-  const toggleLanguage = () => {
-    setLanguage(language === "vi" ? "en" : "vi");
-  };
+  const navItems = tripId
+    ? [
+        { href: "/trips",                          icon: Compass,   label: "Trips"                },
+        { href: `/trip/${tripId}`,                  icon: Home,      label: "Dashboard"            },
+        { href: `/trip/${tripId}/itinerary`,        icon: Map,       label: t("navbar.itinerary")  },
+        { href: `/trip/${tripId}/memories`,         icon: BookHeart, label: t("navbar.journal")    },
+      ]
+    : [
+        { href: "/trips", icon: Compass, label: "Trips" },
+      ];
 
   return (
     <nav
@@ -57,7 +62,7 @@ export function Navbar() {
                   strokeWidth={2.2}
                 />
                 <span
-                  className="text-[13px] font-semibold leading-none whitespace-nowrap"
+                  className="hidden sm:inline text-[13px] font-semibold leading-none whitespace-nowrap"
                   style={{ color: isActive ? "var(--nature-900)" : "rgba(255,255,255,0.75)" }}
                 >
                   {label}
@@ -67,16 +72,14 @@ export function Navbar() {
           );
         })}
 
-        {/* Language Toggle next to memories */}
+        {/* Language Toggle */}
         <button
-          onClick={toggleLanguage}
+          onClick={() => setLanguage(language === "vi" ? "en" : "vi")}
           className="relative flex items-center justify-center w-9 h-9 rounded-full transition-all active:scale-90 ml-1"
           style={{ background: "rgba(255,255,255,0.1)" }}
           aria-label="Toggle language"
         >
-          <span className="text-lg">
-            {language === "vi" ? "🇻🇳" : "🇺🇸"}
-          </span>
+          <span className="text-lg">{language === "vi" ? "🇻🇳" : "🇺🇸"}</span>
         </button>
       </motion.div>
     </nav>

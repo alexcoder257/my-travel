@@ -13,6 +13,8 @@ export interface Trip {
     MYR: number;
   };
   createdAt: Date;
+  ownerId: string;
+  roles?: Record<string, "editor" | "viewer">; // email -> role
 }
 
 export interface ItineraryItem {

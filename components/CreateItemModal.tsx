@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useParams } from "next/navigation";
 import { ItineraryItem } from "@/types/index";
 import { addItineraryItems, sortDayByTime } from "@/lib/firestore";
 import { useToast } from "@/contexts/ToastContext";
@@ -95,6 +96,8 @@ function toPercent(mins: number) {
 }
 
 export function CreateItemModal({ day, order, date, existingItems, onClose }: Props) {
+  const params = useParams();
+  const tripId = params?.tripId as string;
   const toast = useToast();
   const [saving, setSaving] = useState(false);
 
@@ -163,7 +166,6 @@ export function CreateItemModal({ day, order, date, existingItems, onClose }: Pr
       const e = form.endTime.trim();
       const timeStr = s && e ? `${s}–${e}` : s || e || "";
       const newItem: Omit<ItineraryItem, "id"> = {
-        tripId: "sg-my-2026",
         day,
         date: form.date.trim(),
         time: timeStr,
@@ -179,7 +181,7 @@ export function CreateItemModal({ day, order, date, existingItems, onClose }: Pr
         mapUrl: form.mapUrl.trim() || undefined,
         category: form.category as ItineraryItem["category"],
       };
-      await addItineraryItems([newItem]);
+      await addItineraryItems(tripId, [newItem]);
       await sortDayByTime(day);
       toast.success("Đã thêm hoạt động mới.");
       onClose();

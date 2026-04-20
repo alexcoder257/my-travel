@@ -27,6 +27,7 @@ import { ConfirmModal } from "./ConfirmModal";
 import { EditItemModal } from "./EditItemModal";
 import { useToast } from "@/contexts/ToastContext";
 import { useTranslation } from "@/lib/i18n";
+import { useParams } from "next/navigation";
 
 interface ItineraryCardProps {
   item: ItineraryItem;
@@ -51,7 +52,9 @@ export function ItineraryCard({
 }: ItineraryCardProps) {
   const toast = useToast();
   const { t } = useTranslation();
-  const { visitedPlaces } = useTripData();
+  const { visitedPlaces, canEdit } = useTripData();
+  const params = useParams();
+  const tripId = params?.tripId as string;
 
   const CATEGORY_META: Record<
     string,
@@ -145,12 +148,13 @@ export function ItineraryCard({
 
   const handleToggleQuick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canEdit) return;
     if (item.visited) {
       setIsDeleteModalOpen(true);
     } else {
       try {
         setSubmitting(true);
-        await addVisitedPlace(item.id, {
+        await addVisitedPlace(tripId, item.id, {
           foodCost: {
             amount: foodAmount ? parseFloat(foodAmount) : 0,
             currency: priceCurrency,
@@ -173,12 +177,13 @@ export function ItineraryCard({
   };
 
   const handleSaveVisit = async () => {
+    if (!canEdit) return;
     try {
       setSubmitting(true);
       if (mapUrl !== item.mapUrl) {
         await updateItineraryItem(item.id, { mapUrl });
       }
-      await addVisitedPlace(item.id, {
+      await addVisitedPlace(tripId, item.id, {
         foodCost: {
           amount: foodAmount ? parseFloat(foodAmount) : 0,
           currency: priceCurrency,
@@ -265,10 +270,10 @@ export function ItineraryCard({
           <button
             type="button"
             onClick={handleToggleQuick}
-            disabled={submitting}
+            disabled={submitting || !canEdit}
             aria-pressed={item.visited}
             aria-label={item.visited ? "Bỏ đánh dấu đã đến" : "Đánh dấu đã đến"}
-            className="w-6 h-6 rounded-full grid place-items-center flex-shrink-0 mt-1 transition-transform active:scale-90"
+            className="w-6 h-6 rounded-full grid place-items-center flex-shrink-0 mt-1 transition-transform active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: item.visited ? "var(--nature-600)" : "transparent",
               border: item.visited
@@ -309,43 +314,45 @@ export function ItineraryCard({
                 </div>
               </button>
 
-              <div ref={menuRef} className="relative flex-shrink-0">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
-                  aria-label={t("card.details")}
-                  className="w-8 h-8 rounded-full grid place-items-center transition-colors"
-                  style={{ color: "var(--surface-muted)" }}
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                <AnimatePresence>
-                  {menuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute right-0 top-9 z-30 w-36 rounded-2xl overflow-hidden shadow-[var(--shadow-lg)]"
-                      style={{ background: "var(--surface-card)" }}
-                    >
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowEditModal(true); }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--sand-100)]"
-                        style={{ color: "var(--nature-900)" }}
+              {canEdit && (
+                <div ref={menuRef} className="relative flex-shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
+                    aria-label={t("card.details")}
+                    className="w-8 h-8 rounded-full grid place-items-center transition-colors"
+                    style={{ color: "var(--surface-muted)" }}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  <AnimatePresence>
+                    {menuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute right-0 top-9 z-30 w-36 rounded-2xl overflow-hidden shadow-[var(--shadow-lg)]"
+                        style={{ background: "var(--surface-card)" }}
                       >
-                        <Pencil className="w-3.5 h-3.5" /> {t("card.edit")}
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowDeleteItemModal(true); }}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--sand-100)]"
-                        style={{ color: "var(--accent-berry)" }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> {t("card.delete")}
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowEditModal(true); }}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--sand-100)]"
+                          style={{ color: "var(--nature-900)" }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> {t("card.edit")}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setShowDeleteItemModal(true); }}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--sand-100)]"
+                          style={{ color: "var(--accent-berry)" }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> {t("card.delete")}
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
 
             <div className="mt-1.5 flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[12px]" style={{ color: "var(--surface-muted)" }}>
@@ -387,16 +394,20 @@ export function ItineraryCard({
 
             <div className="mt-2 flex items-center justify-between">
               <div className="flex items-center gap-0.5">
-                <button onClick={onMoveUp} disabled={!onMoveUp} aria-label="Lên"
-                  className="w-7 h-7 rounded-full grid place-items-center disabled:opacity-30"
-                  style={{ color: "var(--surface-muted)" }}>
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <button onClick={onMoveDown} disabled={!onMoveDown} aria-label="Xuống"
-                  className="w-7 h-7 rounded-full grid place-items-center disabled:opacity-30"
-                  style={{ color: "var(--surface-muted)" }}>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+                {canEdit && (
+                  <>
+                    <button onClick={onMoveUp} disabled={!onMoveUp} aria-label="Lên"
+                      className="w-7 h-7 rounded-full grid place-items-center disabled:opacity-30"
+                      style={{ color: "var(--surface-muted)" }}>
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button onClick={onMoveDown} disabled={!onMoveDown} aria-label="Xuống"
+                      className="w-7 h-7 rounded-full grid place-items-center disabled:opacity-30"
+                      style={{ color: "var(--surface-muted)" }}>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
               <button
                 onClick={() => setIsExpanded((v) => !v)}

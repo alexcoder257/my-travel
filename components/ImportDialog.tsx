@@ -48,7 +48,7 @@ export function ImportDialog({ tripId, onClose }: Props) {
     if (!result || result.items.length === 0) return;
     setStep("importing");
     try {
-      await addItineraryItems(result.items as Parameters<typeof addItineraryItems>[0]);
+      await addItineraryItems(tripId, result.items as any);
       toast.success(`Đã import ${result.total} hoạt động thành công!`);
       setStep("done");
     } catch (err) {
