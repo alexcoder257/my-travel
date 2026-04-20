@@ -657,7 +657,7 @@ async function seedItinerary() {
       tripId: TRIP_ID,
     })) as ItineraryItem[];
 
-    await addItineraryItems(itemsWithTrip);
+    await addItineraryItems(TRIP_ID, itemsWithTrip);
 
     console.log(`✅ Successfully seeded ${itemsWithTrip.length} itinerary items!`);
   } catch (error) {

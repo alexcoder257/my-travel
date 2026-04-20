@@ -45,7 +45,7 @@ export default function ItineraryPage() {
 }
 
 function ItineraryContent() {
-  const { items: initialItems, loading, toggleVisited, canEdit, isOwner, trip } = useTripData();
+  const { items: initialItems, itineraryLoading: loading, toggleVisited, canEdit, isOwner, trip } = useTripData();
   const params = useParams();
   const tripId = params?.tripId as string;
   const searchParams = useSearchParams();

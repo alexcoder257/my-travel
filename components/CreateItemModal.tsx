@@ -165,7 +165,7 @@ export function CreateItemModal({ day, order, date, existingItems, onClose }: Pr
       const s = form.startTime.trim();
       const e = form.endTime.trim();
       const timeStr = s && e ? `${s}–${e}` : s || e || "";
-      const newItem: Omit<ItineraryItem, "id"> = {
+      const newItem: Omit<ItineraryItem, "id" | "tripId"> = {
         day,
         date: form.date.trim(),
         time: timeStr,
