@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, UserPlus, Trash2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { updateTripRoles } from "@/lib/firestore";
 import { Trip } from "@/types/index";
 
@@ -14,6 +15,7 @@ interface Props {
 
 export function ShareModal({ trip, onClose }: Props) {
   const toast = useToast();
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"editor" | "viewer">("viewer");
   const [submitting, setSubmitting] = useState(false);
@@ -28,10 +30,20 @@ export function ShareModal({ trip, onClose }: Props) {
     setSubmitting(true);
     try {
       await updateTripRoles(trip.id, email, role);
+
+      await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          role,
+          tripName: trip.name,
+          inviterName: user?.displayName || user?.email || "Ai đó",
+        }),
+      });
+
       toast.success(`Đã mời ${email} với quyền ${role}`);
       setEmail("");
-      // Logic để cập nhật state cục bộ nếu cần,
-      // nhưng thường onSnapshot ở TripDataContext sẽ lo việc này.
     } catch (err) {
       console.error(err);
       toast.error("Không thể thêm người dùng");
