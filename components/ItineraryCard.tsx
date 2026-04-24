@@ -28,6 +28,8 @@ import { EditItemModal } from "./EditItemModal";
 import { useToast } from "@/contexts/ToastContext";
 import { useTranslation } from "@/lib/i18n";
 import { useParams } from "next/navigation";
+import { parseMRTPath } from "@/lib/mrt";
+import { MRTVisualizer } from "./MRTVisualizer";
 
 interface ItineraryCardProps {
   item: ItineraryItem;
@@ -386,6 +388,15 @@ export function ItineraryCard({
                 {item.notes}
               </p>
             )}
+
+            {/* MRT Visualization */}
+            {item.notes && (
+              (() => {
+                const steps = parseMRTPath(item.notes);
+                return steps ? <MRTVisualizer steps={steps} /> : null;
+              })()
+            )}
+
             {item.visited && visitedPlace?.notes && !isExpanded && (
               <div className="mt-1.5 inline-flex items-center gap-1 text-[12px] px-2 py-0.5 rounded-full max-w-full"
                 style={{ background: "var(--sand-100)", color: "var(--nature-700)" }}>
