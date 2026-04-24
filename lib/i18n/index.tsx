@@ -58,7 +58,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     let translated = result;
     if (variables) {
       Object.entries(variables).forEach(([key, value]) => {
-        translated = translated.replace(`{${key}}`, value.toString());
+        const stringValue = value !== undefined && value !== null ? value.toString() : "";
+        translated = translated.replace(`{${key}}`, stringValue);
       });
     }
 

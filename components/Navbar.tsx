@@ -17,13 +17,13 @@ export function Navbar() {
 
   const navItems = tripId
     ? [
-        { href: "/trips",                          icon: Compass,   label: "Trips"                },
-        { href: `/trip/${tripId}`,                  icon: Home,      label: "Dashboard"            },
+        { href: "/trips",                          icon: Compass,   label: t("navbar.trips")      },
+        { href: `/trip/${tripId}`,                  icon: Home,      label: t("navbar.dashboard")  },
         { href: `/trip/${tripId}/itinerary`,        icon: Map,       label: t("navbar.itinerary")  },
         { href: `/trip/${tripId}/memories`,         icon: BookHeart, label: t("navbar.journal")    },
       ]
     : [
-        { href: "/trips", icon: Compass, label: "Trips" },
+        { href: "/trips", icon: Compass, label: t("navbar.trips") },
       ];
 
   return (

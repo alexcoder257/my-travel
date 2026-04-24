@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { COUNTRIES, getHeroImage } from "@/lib/countries";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { useTranslation } from "@/lib/i18n";
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -31,6 +32,7 @@ export default function TripsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmTrip, setConfirmTrip] = useState<Trip | null>(null);
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (authLoading) return;
@@ -47,7 +49,7 @@ export default function TripsPage() {
       const tripId = `trip-${Date.now()}`;
       const newTrip: Trip = {
         id: tripId,
-        name: "Chuyến đi mới",
+        name: t("trips.new_trip_name"),
         countries: ["sg"],
         startDate: new Date(),
         endDate: new Date(Date.now() + 86400000 * 3),
@@ -75,7 +77,7 @@ export default function TripsPage() {
     }
   };
 
-  if (authLoading || loading) return <TripLoader label="Đang tải..." />;
+  if (authLoading || loading) return <TripLoader label={t("common.loading")} />;
 
   const avatar = user?.photoURL;
   const displayName = user?.displayName || user?.email?.split("@")[0] || "Traveler";
@@ -131,7 +133,7 @@ export default function TripsPage() {
           className="mt-5 text-[28px] font-extrabold leading-tight"
           style={{ color: "var(--nature-900)" }}
         >
-          Chuyến đi của tôi
+          {t("trips.title")}
         </h1>
       </div>
 
@@ -150,10 +152,10 @@ export default function TripsPage() {
               🗺️
             </div>
             <p className="text-[16px] font-semibold" style={{ color: "var(--nature-900)" }}>
-              Chưa có chuyến đi nào
+              {t("trips.empty")}
             </p>
             <p className="text-[13px]" style={{ color: "var(--surface-muted)" }}>
-              Tạo chuyến đi đầu tiên của bạn ngay bây giờ
+              {t("trips.empty_desc")}
             </p>
           </motion.div>
         ) : (
@@ -190,19 +192,19 @@ export default function TripsPage() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
                           style={{ background: "var(--accent-leaf)", color: "var(--nature-900)" }}>
                           <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse" />
-                          Đang diễn ra
+                          {t("trips.ongoing")}
                         </span>
                       )}
                       {isUpcoming && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
                           style={{ background: "rgba(0,0,0,0.4)" }}>
-                          Sắp tới
+                          {t("trips.upcoming")}
                         </span>
                       )}
                       {!isOngoing && !isUpcoming && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
                           style={{ background: "rgba(0,0,0,0.4)" }}>
-                          Đã kết thúc
+                          {t("trips.finished")}
                         </span>
                       )}
                     </div>
@@ -261,17 +263,17 @@ export default function TripsPage() {
           style={{ background: "linear-gradient(135deg,var(--nature-600),var(--nature-800))" }}
         >
           <Plus className="w-5 h-5" />
-          {creating ? "Đang tạo..." : "Tạo chuyến đi mới"}
+          {creating ? t("common.loading") : t("trips.create_new")}
         </motion.button>
       </div>
 
       {/* ── CONFIRM DELETE MODAL ── */}
       <ConfirmModal
         isOpen={!!confirmTrip}
-        title="Xóa chuyến đi?"
-        message={`Bạn có chắc muốn xóa "${confirmTrip?.name}"? Toàn bộ lịch trình và dữ liệu sẽ bị xóa vĩnh viễn.`}
-        confirmText={deletingId ? "Đang xóa..." : "Xóa"}
-        cancelText="Hủy"
+        title={t("trips.delete_title")}
+        message={t("trips.delete_message", { name: confirmTrip?.name || "" })}
+        confirmText={deletingId ? t("trips.deleting") : t("common.confirm")}
+        cancelText={t("common.cancel")}
         variant="destructive"
         onConfirm={handleDelete}
         onCancel={() => setConfirmTrip(null)}

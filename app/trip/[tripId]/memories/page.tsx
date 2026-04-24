@@ -261,7 +261,7 @@ export default function MemoriesPage() {
                       {totalVND > 0 && (
                         <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full ml-auto"
                           style={{ background: "var(--sand-100)", color: "var(--nature-700)" }}>
-                          ≈ {totalVND.toLocaleString()}đ
+                          ≈ {totalVND.toLocaleString("vi-VN")}đ
                         </span>
                       )}
                     </div>

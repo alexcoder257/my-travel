@@ -64,7 +64,22 @@
   "navbar": {
     "explore": "Explore",
     "itinerary": "Itinerary",
-    "journal": "Journal"
+    "journal": "Journal",
+    "trips": "Trips",
+    "dashboard": "Dashboard"
+  },
+  "trips": {
+    "title": "My Trips",
+    "create_new": "Create new trip",
+    "ongoing": "Ongoing",
+    "upcoming": "Upcoming",
+    "finished": "Finished",
+    "empty": "No trips found",
+    "empty_desc": "Create your first trip now",
+    "delete_title": "Delete trip?",
+    "delete_message": "Are you sure you want to delete \"{name}\"? All itinerary and data will be permanently deleted.",
+    "deleting": "Deleting...",
+    "new_trip_name": "New Trip"
   },
   "card": {
     "open_maps": "Open Google Maps",

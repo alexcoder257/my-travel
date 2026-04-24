@@ -64,7 +64,22 @@
   "navbar": {
     "explore": "Khám phá",
     "itinerary": "Lịch trình",
-    "journal": "Nhật ký"
+    "journal": "Nhật ký",
+    "trips": "Chuyến đi",
+    "dashboard": "Tổng quan"
+  },
+  "trips": {
+    "title": "Chuyến đi của tôi",
+    "create_new": "Tạo chuyến đi mới",
+    "ongoing": "Đang diễn ra",
+    "upcoming": "Sắp tới",
+    "finished": "Đã kết thúc",
+    "empty": "Chưa có chuyến đi nào",
+    "empty_desc": "Tạo chuyến đi đầu tiên của bạn ngay bây giờ",
+    "delete_title": "Xóa chuyến đi?",
+    "delete_message": "Bạn có chắc muốn xóa \"{name}\"? Toàn bộ lịch trình và dữ liệu sẽ bị xóa vĩnh viễn.",
+    "deleting": "Đang xóa...",
+    "new_trip_name": "Chuyến đi mới"
   },
   "card": {
     "open_maps": "Mở Google Maps",

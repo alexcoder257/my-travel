@@ -364,7 +364,9 @@ export function ItineraryCard({
               <span>{item.date}</span>
               <span>·</span>
               <span className="font-semibold" style={{ color: "var(--nature-800)" }}>
-                ~{item.estimatedPrice.amount}
+                ~{item.estimatedPrice.currency === "VND"
+                  ? item.estimatedPrice.amount.toLocaleString("vi-VN")
+                  : item.estimatedPrice.amount.toLocaleString()}
                 <span className="ml-0.5 opacity-70 text-[11px]">{item.estimatedPrice.currency}</span>
               </span>
             </div>

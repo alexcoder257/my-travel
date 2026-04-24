@@ -462,7 +462,7 @@ function SpendPod({
     >
       <p className="text-[14px] font-bold" style={{ color: ink }}>{label}</p>
       <p className="mt-2 text-[22px] font-bold leading-tight" style={{ color: ink }}>
-        {vnd.toLocaleString()}<span className="text-[13px] font-medium opacity-70 ml-0.5">đ</span>
+        {vnd.toLocaleString("vi-VN")}<span className="text-[13px] font-medium opacity-70 ml-0.5">đ</span>
       </p>
       <p className="mt-1 text-[13px]" style={{ color: ink, opacity: 0.7 }}>
         {sgd.toFixed(1)} SGD · {myr.toFixed(1)} MYR
@@ -480,7 +480,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: "sof
     <div>
       <p className="text-[13px] uppercase tracking-wide opacity-80 font-semibold">{label}</p>
       <p className="mt-1 text-[18px] font-bold leading-tight" style={{ color }}>
-        {value.toLocaleString()}<span className="text-[12px] font-medium opacity-70 ml-0.5">đ</span>
+        {value.toLocaleString("vi-VN")}<span className="text-[12px] font-medium opacity-70 ml-0.5">đ</span>
       </p>
     </div>
   );
